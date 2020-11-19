@@ -14,7 +14,12 @@ export type PermissionChecker = (actor: IActor, operation: Operation, entity: IP
 export type Operation = string
 
 
-const OperationsTree = {
+export function initPrivilegeManager(operationsPlugin = (operationTree) => operationTree) {
+    operationTree = new OperationTree(operationsPlugin(DefaultOperationsTreeScheme))
+}
+
+let operationTree: OperationTree
+export const DefaultOperationsTreeScheme = {
     Admin: {
         AddAdmin: {},
         DeleteDatabase: {
@@ -65,7 +70,6 @@ const OperationsTree = {
     }
 }
 
-const operationsDictionary =
 
 export async function checkPermissionSoft(actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<boolean> {
 
@@ -100,7 +104,7 @@ export async function standardPermissionChecker(actor: IActor, operation: Operat
 
     const operations = operationTree.expandOperation(operation);
 
-    const actorRoles = await getUserRoles( actor,entity)
+    const actorRoles = await getUserRoles(actor, entity)
 
 
     let hasPermission = await privilegeStorage.queryPermissions(actor, entity, operations)
@@ -114,24 +118,26 @@ async function globalPermissionCheck(actor: IActor, operation: Operation, specia
 }
 
 
-class OperationTree  {
+class OperationTree {
 
-    private parentsMap: { [operationName:string]: string[]} = {}
+    private parentsMap: { [operationName: string]: string[] } = {}
 
-    constructor(private tree:object) {
+    constructor(private tree: object) {
 
         this.processTree(tree)
     }
 
-    private processTree(tree: object,parent?:object) {
+    private processTree(tree: object, parents: object[] = []) {
 
-        for( let [key,value] of Object.entries(tree)) {
-            let entry = this.parentsMap[key]
-            if ( !entry)
-                entry = []
-            parent?.
+        const self = this
+        populate(tree)
+
+        function populate(node, parents = [],) {
+            for (let [name, children] of Object.entries(node)) {
+                self.parentsMap[name] = parents
+                children && Object.keys(children).length && populate(children, [name, ...parents])
+            }
         }
-
     }
 
     /**
@@ -145,7 +151,7 @@ class OperationTree  {
             return []
         return [...parents,
             ...parents.reduce((a, c) => {
-                a.push(...operationTree.expandOperation(c))
+                a.push(...this.expandOperation(c))
                 return a
             }, [])]
     }
