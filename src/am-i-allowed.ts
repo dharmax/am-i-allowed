@@ -55,7 +55,7 @@ export abstract class IPermissionStore {
 
     abstract removeRole(entityId: any, actorId: any, roleName: string): Promise<void>
 
-    abstract getRolesForUser(actorId: any, entityId: any): Promise<Role[]>
+    abstract getRolesForUser(actorId: any, entity: IPrivilegeManaged): Promise<Role[]>
 }
 
 /**
@@ -122,7 +122,7 @@ export class PrivilegeManager {
     }
 
     async getRolesForUserId(id: any, entity: IPrivilegeManaged): Promise<Role[]> {
-        return this.store.getRolesForUser(id, entity.id)
+        return this.store.getRolesForUser(id, entity)
     }
 
 
@@ -221,17 +221,15 @@ class NoPrivilegeException extends Error {
  */
 export async function standardPermissionChecker(privilegeManager: PrivilegeManager, actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<boolean> {
 
-    const operations = privilegeManager.operationTree.expandOperation(operation);
-    const entityType = entity.entityType()
+    const entityType = entityTypesLookup.findType(entity)
     const isVisitor = !actor.id
-    const entityRoles = await privilegeManager.getRolesForUserId(actor, entity)
+    const entityRoles = await privilegeManager.getRolesForUserId(actor.id, entity)
     const isJustUser = !isVisitor && !entityRoles.length
     const isGroupMember = actor.groups.reduce((a, c) => a || entity.permissionGroupIds?.includes(c), false)
 
-    for (let op of operations) {
-        if (isAllowed(op))
-            return true
-    }
+    if (isAllowed(operation))
+        return true
+
     if (entity.permissionSuper) {
         return privilegeManager.isAllowed(actor, operation, await entity.permissionSuper(), specialContext)
     }
@@ -239,19 +237,26 @@ export async function standardPermissionChecker(privilegeManager: PrivilegeManag
 
     function isAllowed(op: Operation): boolean {
         if (isVisitor) {
-            if (entityType.defaultVisitorPermissions.has(op) || entityRoles['Visitor']?.operations.has(op))
+            const operations = privilegeManager.operationTree.expandAll(entityType.defaultVisitorPermissions);
+            if (operations.has(op) || entityRoles['Visitor']?.operations.has(op))
                 return true
         }
 
-        if (isJustUser)
-            if (entityType.defaultUserPermissions.has(op) || entityRoles['Visitor']?.operations.has(op))
+        if (isJustUser) {
+            const operations = privilegeManager.operationTree.expandAll(entityType.defaultUserPermissions);
+            if (operations.has(op) || entityRoles['Visitor']?.operations.has(op))
                 return true
-        if (isGroupMember)
-            if (entityType.defaultGroupMemberPermissions.has(op) || entityRoles['GroupMember']?.operations.has(op))
+        }
+        if (isGroupMember) {
+            const operations = privilegeManager.operationTree.expandAll(entityType.defaultGroupMemberPermissions);
+            if (operations.has(op) || entityRoles['GroupMember']?.operations.has(op))
                 return true
-        for (let role of entityRoles)
-            if (role.operations.has(op))
+        }
+        for (let role of entityRoles) {
+            const operations = privilegeManager.operationTree.expandAll(role.operations);
+            if (operations.has(op))
                 return true
+        }
 
         return false
 
@@ -299,14 +304,25 @@ class OperationTree {
      */
     expandOperation(operation: Operation): Operation[] {
 
-        const parents = this.parentsMap.get(operation)
-        if (!parents.length)
+        if (!operation)
             return []
-        return [...parents,
+        const parents = this.parentsMap.get(operation)
+        if (parents.length)
+            return [operation, ...parents]
+        return [operation, ...parents,
             ...parents.reduce((a, c) => {
                 a.push(...this.expandOperation(c))
                 return a
             }, [])]
+    }
+
+    expandAll(operations: Iterable<Operation>): Set<Operation> {
+        if (!operations)
+            return new Set<Operation>()
+        return Array.from(operations).reduce((a, c) => {
+            this.expandOperation(c).forEach(o => a.add(o))
+            return a
+        }, new Set<Operation>())
     }
 
     find(operation: Operation): boolean {
@@ -319,7 +335,7 @@ export class PrivilegeManagedEntityType {
     roles: { [roleName: string]: Role } = {}
 
     constructor(public name: string, parentNames: string[] = [],
-                roles?: Role[],
+                roles: Role[] = [],
                 public defaultVisitorPermissions?: Set<Operation>,
                 public defaultUserPermissions?: Set<Operation>,
                 public defaultGroupMemberPermissions?: Set<Operation>
@@ -337,17 +353,23 @@ const entityTypesLookup = {
 
     getOrAddType(entityType: string | Function): PrivilegeManagedEntityType {
         const name = typeof entityType == 'string' ? entityType : entityType.name
-        const clazz = typeof entityType == 'string' ? eval(entityType) : entityType
+        const clazz = typeof entityType == 'string' ? null : entityType
 
         let entry = this.typesMap.get(name)
         if (!entry) {
-            entry = (clazz as IPrivilegeManaged).entityType || new PrivilegeManagedEntityType(name)
+            entry = (clazz as IPrivilegeManaged)?.entityType || new PrivilegeManagedEntityType(name)
             this.typesMap.set(name, entry)
         }
 
         return entry
-    }
+    },
 
+    findType(entity: IPrivilegeManaged) {
+        const t = entity.entityType && entity.entityType()
+        if (t)
+            return t
+        return this.getOrAddType(entity.constructor)
+    }
 }
 
 export class Role {
@@ -373,17 +395,18 @@ export class MemoryPermissionStore implements IPermissionStore {
     assignRole(entityId: any, actorId: any, roleName: string): Promise<void> {
         entityId = entityId.toString()
         actorId = actorId.toString()
-        let entry = this.rolesDatabase[entityId]
-        if (!entry) {
-            entry = {}
-            this.rolesDatabase[entityId] = entry
+        let entityEntry = this.rolesDatabase[entityId]
+        if (!entityEntry) {
+            entityEntry = {[actorId]: [roleName]}
+            this.rolesDatabase[entityId] = entityEntry
+            return
         }
-        let actorEntry = entry[actorId]
-        if (!actorEntry) {
-            actorEntry = []
-            entry[actorId] = actorEntry
+        let actorRoles = entityEntry[actorId]
+        if (!actorRoles) {
+            entityEntry[actorId] = [roleName]
+            return
         }
-        actorEntry.push(roleName)
+        actorRoles.push(roleName)
         return
     }
 
@@ -397,10 +420,7 @@ export class MemoryPermissionStore implements IPermissionStore {
         if (!roleNames)
             return []
 
-        return roleNames.map(rName =>
-            entity.entityType().roles[rName]
-        )
-
+        return roleNames.map(rName => entityTypesLookup.findType(entity).roles[rName])
     }
 
     async removeRole(entity: IPrivilegeManaged, actorId: any, roleName: string): Promise<void> {

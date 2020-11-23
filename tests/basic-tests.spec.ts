@@ -9,6 +9,14 @@ import {
 import {expect} from 'chai'
 
 
+class Workshop implements IPrivilegeManaged {
+    constructor(readonly id: string) {
+
+    }
+
+    permissionGroupIds: string[];
+
+}
 describe('Testing am-i-allowed ', () => {
 
     const myUsers: { [name: string]: IActor } = {
@@ -37,19 +45,10 @@ describe('Testing am-i-allowed ', () => {
         const jeff = myUsers['Jeff'];
         await pm.assignRole(workShop1, jeff, RoleSalesPerson)
 
-        expect(pm.isAllowed(jeff, 'DeepRead', workShop1)).to.be.true;
-        expect(pm.isAllowed(jeff, 'ReadCommon', workShop1)).to.be.true;
-        expect(pm.isAllowed(jeff, 'Write', workShop1)).to.be.false;
+        expect(await pm.isAllowed(jeff, 'ReadDeep', workShop1)).to.be.true;
+        expect(await pm.isAllowed(jeff, 'ReadCommon', workShop1)).to.be.true;
+        expect(await pm.isAllowed(jeff, 'Write', workShop1)).to.be.false;
 
     })
 })
 
-
-class Workshop implements IPrivilegeManaged {
-    constructor(readonly id: string) {
-
-    }
-
-    permissionGroupIds: string[];
-
-}
