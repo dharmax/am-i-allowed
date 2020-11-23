@@ -13,6 +13,7 @@ class Workshop implements IPrivilegeManaged {
     constructor(readonly id: string) {
 
     }
+    static entityType = null
 
     permissionGroupIds: string[];
 
@@ -34,7 +35,6 @@ describe('Testing am-i-allowed ', () => {
 
 
     before(() => {
-
     })
 
 

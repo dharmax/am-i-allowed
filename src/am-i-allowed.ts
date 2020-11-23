@@ -31,7 +31,7 @@ export interface IPrivilegeManaged {
     id
     permissionGroupIds?: string[]
     customPermissionChecker?: PermissionChecker
-    entityType?: () => PrivilegeManagedEntityType // should be static !
+    permissionsMetaData?: () => PermissionsMetaData // should be static !
     permissionSuper?: () => Promise<IPrivilegeManaged>
 }
 
@@ -222,7 +222,7 @@ class NoPrivilegeException extends Error {
 export async function standardPermissionChecker(privilegeManager: PrivilegeManager, actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<boolean> {
 
     const operations = privilegeManager.operationTree.expandOperation(operation);
-    const entityType = entityTypesLookup.findType(entity)
+    const entityType = entityMetaDataLookup.findMetaData(entity)
     const isVisitor = !actor.id
     const entityRoles = await privilegeManager.getRolesForUserId(actor.id, entity)
     const isJustUser = !isVisitor && !entityRoles.length
@@ -326,7 +326,7 @@ class OperationTree {
     }
 }
 
-export class PrivilegeManagedEntityType {
+export class PermissionsMetaData {
 
     roles: { [roleName: string]: Role } = {}
 
@@ -343,29 +343,29 @@ export class PrivilegeManagedEntityType {
     }
 }
 
-const entityTypesLookup = {
+const entityMetaDataLookup = {
 
-    typesMap: new Map<string, PrivilegeManagedEntityType>(),
+    metaDataMap: new Map<string, PermissionsMetaData>(),
 
-    getOrAddType(entityType: string | Function): PrivilegeManagedEntityType {
+    getOrAddMetaData(entityType: string | Function): PermissionsMetaData {
         const name = typeof entityType == 'string' ? entityType : entityType.name
         const clazz = typeof entityType == 'string' ? null : entityType
 
-        let entry = this.typesMap.get(name)
-        if (!entry) {
+        let metadata = this.metaDataMap.get(name)
+        if (!metadata) {
             // @ts-ignore
-            entry = clazz?.entityType || new PrivilegeManagedEntityType(name)
-            this.typesMap.set(name, entry)
+            metadata = clazz?.permissionsMetaData || new PermissionsMetaData(name)
+            this.metaDataMap.set(name, metadata)
         }
 
-        return entry
+        return metadata
     },
 
-    findType(entity: IPrivilegeManaged) {
-        const t = entity.entityType && entity.entityType()
+    findMetaData(entity: IPrivilegeManaged) {
+        const t = entity.permissionsMetaData && entity.permissionsMetaData()
         if (t)
             return t
-        return this.getOrAddType(entity.constructor)
+        return this.getOrAddMetaData(entity.constructor)
     }
 }
 
@@ -381,7 +381,7 @@ export class Role {
      */
     constructor(readonly roleName: string, operations: string[], ...entityTypes: string[] | Function[]) {
         this.operations = new Set<Operation>(operations);
-        [...entityTypes].forEach(type => entityTypesLookup.getOrAddType(type).roles[this.roleName] = this)
+        [...entityTypes].forEach(type => entityMetaDataLookup.getOrAddMetaData(type).roles[this.roleName] = this)
     }
 }
 
@@ -417,7 +417,7 @@ export class MemoryPermissionStore implements IPermissionStore {
         if (!roleNames)
             return []
 
-        return roleNames.map(rName => entityTypesLookup.findType(entity).roles[rName])
+        return roleNames.map(rName => entityMetaDataLookup.findMetaData(entity).roles[rName])
     }
 
     async removeRole(entity: IPrivilegeManaged, actorId: any, roleName: string): Promise<void> {
