@@ -24,14 +24,35 @@ export interface IActor {
  * Something which is managed by this privilege management system. It can be an actual application entity, or a
  * virtual one, such as the system, the backoffice, etc. As long as it adheres to this interface - it can be managed!
  *
- * @permissionSuper is an optional support for things like group trees or folder trees, etc, where by default, a node's permission is derived from its parent, so you can
- * simply return the parent node.
- */
+ *  *  */
 export interface IPrivilegeManaged {
+
+    /**
+     * A required identifier
+     */
     id
+
+    /**
+     * Should be used in simple JSON entities
+     */
+    ___name?: string
+    /**
+     * list of groups of the instance
+     */
     permissionGroupIds?: string[]
+    /**
+     * Optional custom permission logic
+     */
     customPermissionChecker?: PermissionChecker
-    permissionsMetaData?: () => PermissionsMetaData // should be static !
+    /**
+     * If meta data is not provided, default one is automatically created. It must be a static member.
+     * */
+    permissionsMetaData?: PermissionsMetaData
+
+    /**
+     *optionally, you can point to another object to inherit its permissions. It's good for tree like structures, when
+     * you inherit the parent's node's permissions by default.
+     * */
     permissionSuper?: () => Promise<IPrivilegeManaged>
 }
 
@@ -56,6 +77,10 @@ export abstract class IPermissionStore {
     abstract removeRole(entityId: any, actorId: any, roleName: string): Promise<void>
 
     abstract getRolesForUser(actorId: any, entity: IPrivilegeManaged): Promise<Role[]>
+
+    abstract saveRole(entityTypeName:string, role: Role): Promise<void>
+
+    abstract deleteRole(roleName: string, entityTypeName: string)
 }
 
 /**
@@ -101,8 +126,6 @@ export class PrivilegeManager {
 
         if (!this.operationTree.find(operation))
             throw new Error(`Operation ${operation.toString()} is not defined. Consider adding it to the operations tree.`)
-        if (!entity)
-            return globalPermissionCheck(this, actor, operation, specialContext)
 
         if (entity.customPermissionChecker)
             // @ts-ignore
@@ -125,7 +148,23 @@ export class PrivilegeManager {
         return this.store.getRolesForUser(id, entity)
     }
 
+    /**
+     * Define a new role. Also add itself to the corresponding entityType
+     * @param roleName name of role
+     * @param entityTypes The entity types this role is applicable to
+     * @param operations the operation the role holder may do on the entities of the aforementioned types
+     */
+    addRole(roleName: string, operations: Operation[], ...entityTypes: (string | Function)[]):Role {
+        return new Role(this, roleName, operations, ...entityTypes)
+    }
 
+    deleteRole(roleName: string, entityTypeName: string): Promise<void> {
+        return this.store.deleteRole(roleName, entityTypeName)
+    }
+
+    saveRole(entityTypeName: string, role: Role) {
+        return this.store.saveRole( entityTypeName, role)
+    }
 }
 
 /**
@@ -212,7 +251,9 @@ class NoPrivilegeException extends Error {
 }
 
 /**
- * This is the standardPermissionChecker logic.
+ * This is the standardPermissionChecker logic. First, explicit role assignments are checked, then group related, which means,
+ * if user and entity groups intersect, then either the default group permissions are used or the entities GroupMember role is used,
+ * then the default type's user permissions and entities "User" role, and the same with visitor ("Visitor" role, etc).
  * @param privilegeManager
  * @param actor
  * @param operation
@@ -238,21 +279,22 @@ export async function standardPermissionChecker(privilegeManager: PrivilegeManag
     return false
 
     function isAllowed(op: Operation): boolean {
-        if (isVisitor) {
-            if (entityType.defaultVisitorPermissions.has(op) || entityRoles['Visitor']?.operations.has(op))
-                return true
-        }
-
-        if (isJustUser)
-            if (entityType.defaultUserPermissions.has(op) || entityRoles['Visitor']?.operations.has(op))
-                return true
-        if (isGroupMember)
-            if (entityType.defaultGroupMemberPermissions.has(op) || entityRoles['GroupMember']?.operations.has(op))
-                return true
         for (let role of entityRoles)
             if (role.operations.has(op))
                 return true
 
+        if (isGroupMember)
+            if (entityType.defaultGroupMemberPermissions.has(op) || entityRoles['GroupMember']?.operations.has(op))
+                return true
+
+        if (isJustUser || isVisitor)
+            if (entityType.defaultUserPermissions.has(op) || entityRoles['User']?.operations.has(op))
+                return true
+
+        if (isVisitor) {
+            if (entityType.defaultVisitorPermissions.has(op) || entityRoles['Visitor']?.operations.has(op))
+                return true
+        }
 
         return false
 
@@ -262,10 +304,6 @@ export async function standardPermissionChecker(privilegeManager: PrivilegeManag
 }
 
 ////////////////////////////////////////////
-
-async function globalPermissionCheck(privilegeManager: PrivilegeManager, actor: IActor, operation: Operation, specialContext: any): Promise<boolean> {
-    return false;
-}
 
 
 /**
@@ -312,20 +350,14 @@ class OperationTree {
             }, [])]
     }
 
-    expandAll(operations: Iterable<Operation>): Set<Operation> {
-        if (!operations)
-            return new Set<Operation>()
-        return Array.from(operations).reduce((a, c) => {
-            this.expandOperation(c).forEach(o => a.add(o))
-            return a
-        }, new Set<Operation>())
-    }
-
     find(operation: Operation): boolean {
         return this.parentsMap.has(operation);
     }
 }
 
+/**
+ * with that, sophisticated permission schemes can easily be defined per entity-types.
+ */
 export class PermissionsMetaData {
 
     roles: { [roleName: string]: Role } = {}
@@ -362,40 +394,41 @@ const entityMetaDataLookup = {
     },
 
     findMetaData(entity: IPrivilegeManaged) {
-        const t = entity.permissionsMetaData && entity.permissionsMetaData()
-        if (t)
-            return t
-        return this.getOrAddMetaData(entity.constructor)
+        return this.getOrAddMetaData(entity.constructor || entity.___name)
     }
 }
 
+/**
+ * Role defines the set of permitted operations. Each role is applicable to a provided entity types
+ */
 export class Role {
 
     readonly operations: Set<Operation>
 
-    /**
-     * Define a new role. Also add itself to the corresponding entityType
-     * @param roleName name of role
-     * @param entityTypes The entity types this role is applicable to
-     * @param operations the operation the role holder may do on the entities of the aforementioned types
-     */
-    constructor(readonly roleName: string, operations: string[], ...entityTypes: string[] | Function[]) {
+
+    constructor(pm: PrivilegeManager, readonly roleName: string, operations: string[], ...entityTypes: (string | Function)[]) {
         this.operations = new Set<Operation>(operations);
-        [...entityTypes].forEach(type => entityMetaDataLookup.getOrAddMetaData(type).roles[this.roleName] = this)
+        [...entityTypes].forEach(type => {
+            const metaData = entityMetaDataLookup.getOrAddMetaData(type);
+            metaData.roles[this.roleName] = this
+            pm.saveRole( metaData.name, this)
+        })
+
     }
 }
 
 
 export class MemoryPermissionStore implements IPermissionStore {
-    private rolesDatabase: { [entityId: string]: { [actorId: string]: string[] } } = {}
+    private roleAssignmentDatabase: { [entityId: string]: { [actorId: string]: string[] } } = {}
+    private roleRegistry = {};
 
     assignRole(entityId: any, actorId: any, roleName: string): Promise<void> {
         entityId = entityId.toString()
         actorId = actorId.toString()
-        let entityEntry = this.rolesDatabase[entityId]
+        let entityEntry = this.roleAssignmentDatabase[entityId]
         if (!entityEntry) {
             entityEntry = {[actorId]: [roleName]}
-            this.rolesDatabase[entityId] = entityEntry
+            this.roleAssignmentDatabase[entityId] = entityEntry
             return
         }
         let actorRoles = entityEntry[actorId]
@@ -410,7 +443,7 @@ export class MemoryPermissionStore implements IPermissionStore {
     async getRolesForUser(actorId: any, entity: IPrivilegeManaged): Promise<Role[]> {
         const entityId = entity.id.toString()
         actorId = actorId.toString()
-        let entry = this.rolesDatabase[entityId]
+        let entry = this.roleAssignmentDatabase[entityId]
         if (!entry)
             return []
         const roleNames = entry[actorId]
@@ -423,7 +456,7 @@ export class MemoryPermissionStore implements IPermissionStore {
     async removeRole(entity: IPrivilegeManaged, actorId: any, roleName: string): Promise<void> {
         const entityId = entity.id.toString()
         actorId = actorId.toString()
-        let entry = this.rolesDatabase[entityId]
+        let entry = this.roleAssignmentDatabase[entityId]
         if (!entry)
             return
         const roleNames = entry[actorId]
@@ -433,6 +466,14 @@ export class MemoryPermissionStore implements IPermissionStore {
         if (i === -1)
             return
         roleNames.splice(i, 1)
+    }
+
+    deleteRole(roleName: string, entityTypeName: string) {
+        delete this.roleRegistry[entityTypeName + '.' + roleName]
+    }
+
+    async saveRole(entityTypeName:string, role: Role): Promise<void> {
+        this.roleRegistry[entityTypeName + '.' + role.roleName] = role
     }
 
 }

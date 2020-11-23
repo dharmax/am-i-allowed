@@ -2,7 +2,7 @@ import {before} from "mocha";
 import {
     IActor,
     IPrivilegeManaged,
-    MemoryPermissionStore,
+    MemoryPermissionStore, PermissionsMetaData,
     PrivilegeManager,
     Role
 } from "../src/am-i-allowed";
@@ -13,11 +13,11 @@ class Workshop implements IPrivilegeManaged {
     constructor(readonly id: string) {
 
     }
-    static entityType = null
 
-    permissionGroupIds: string[];
+    static permissionsMetaData = new PermissionsMetaData('Workshop',[],[], )
 
 }
+
 describe('Testing am-i-allowed ', () => {
 
     const myUsers: { [name: string]: IActor } = {
@@ -31,7 +31,7 @@ describe('Testing am-i-allowed ', () => {
 
     let pm = new PrivilegeManager(new MemoryPermissionStore())
 
-    const RoleSalesPerson = new Role('Seller', ['ReadDeep', 'Sell'], Workshop)
+    const RoleSalesPerson = pm.addRole('Seller', ['ReadDeep', 'Sell'], Workshop)
 
 
     before(() => {
