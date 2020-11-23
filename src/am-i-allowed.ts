@@ -28,11 +28,11 @@ export interface IActor {
  * simply return the parent node.
  */
 export interface IPrivilegeManaged {
-    permissionGroupIds: string[]
-    customPermissionChecker?: PermissionChecker;
-    entityType: () => PrivilegeManagedEntityType
-    permissionSuper?: () => Promise<IPrivilegeManaged>
     id
+    permissionGroupIds?: string[]
+    customPermissionChecker?: PermissionChecker;
+    entityType?: () => PrivilegeManagedEntityType
+    permissionSuper?: () => Promise<IPrivilegeManaged>
 }
 
 /**
@@ -226,7 +226,7 @@ export async function standardPermissionChecker(privilegeManager: PrivilegeManag
     const isVisitor = !actor.id
     const entityRoles = await privilegeManager.getRolesForUserId(actor, entity)
     const isJustUser = !isVisitor && !entityRoles.length
-    const isGroupMember = actor.groups.reduce((a, c) => a || entity.permissionGroupIds.includes(c), false)
+    const isGroupMember = actor.groups.reduce((a, c) => a || entity.permissionGroupIds?.includes(c), false)
 
     for (let op of operations) {
         if (isAllowed(op))
@@ -316,10 +316,9 @@ class OperationTree {
 
 export class PrivilegeManagedEntityType {
 
-    parents = new Set<PrivilegeManagedEntityType>()
     roles: { [roleName: string]: Role } = {}
 
-    constructor(public name: string, parentNames: string[],
+    constructor(public name: string, parentNames: string[] = [],
                 roles?: Role[],
                 public defaultVisitorPermissions?: Set<Operation>,
                 public defaultUserPermissions?: Set<Operation>,
@@ -329,9 +328,6 @@ export class PrivilegeManagedEntityType {
             a[c.roleName] = c
             return a
         }, {})
-        parentNames.forEach(parentName => {
-            this.parents.add(entityTypesLookup.getOrAddType(parentName))
-        })
     }
 }
 
@@ -339,11 +335,16 @@ const entityTypesLookup = {
 
     typesMap: new Map<string, PrivilegeManagedEntityType>(),
 
-    getOrAddType(name, ...parents: string[]): PrivilegeManagedEntityType {
+    getOrAddType(entityType: string | Function): PrivilegeManagedEntityType {
+        const name = typeof entityType == 'string' ? entityType : entityType.name
+        const clazz = typeof entityType == 'string' ? eval(entityType) : entityType
+
         let entry = this.typesMap.get(name)
         if (!entry) {
-            entry = new PrivilegeManagedEntityType(name, parents)
+            entry = (clazz as IPrivilegeManaged).entityType || new PrivilegeManagedEntityType(name)
+            this.typesMap.set(name, entry)
         }
+
         return entry
     }
 
@@ -359,9 +360,9 @@ export class Role {
      * @param entityTypes The entity types this role is applicable to
      * @param operations the operation the role holder may do on the entities of the aforementioned types
      */
-    constructor(readonly roleName: string, entityTypes: string | string[], operations: string[]) {
+    constructor(readonly roleName: string, operations: string[], ...entityTypes: string[] | Function[]) {
         this.operations = new Set<Operation>(operations);
-        [...entityTypes].forEach(typeName => entityTypesLookup.getOrAddType(typeName).roles[this.roleName] = this)
+        [...entityTypes].forEach(type => entityTypesLookup.getOrAddType(type).roles[this.roleName] = this)
     }
 }
 
@@ -418,3 +419,4 @@ export class MemoryPermissionStore implements IPermissionStore {
     }
 
 }
+
