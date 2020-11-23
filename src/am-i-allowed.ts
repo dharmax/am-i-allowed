@@ -78,7 +78,7 @@ export abstract class IPermissionStore {
 
     abstract getRolesForUser(actorId: any, entity: IPrivilegeManaged): Promise<Role[]>
 
-    abstract saveRole(entityTypeName:string, role: Role): Promise<void>
+    abstract saveRole(entityTypeName: string, role: Role): Promise<void>
 
     abstract deleteRole(roleName: string, entityTypeName: string)
 }
@@ -154,7 +154,7 @@ export class PrivilegeManager {
      * @param entityTypes The entity types this role is applicable to
      * @param operations the operation the role holder may do on the entities of the aforementioned types
      */
-    addRole(roleName: string, operations: Operation[], ...entityTypes: (string | Function)[]):Role {
+    addRole(roleName: string, operations: Operation[], ...entityTypes: (string | Function)[]): Role {
         return new Role(this, roleName, operations, ...entityTypes)
     }
 
@@ -163,7 +163,7 @@ export class PrivilegeManager {
     }
 
     saveRole(entityTypeName: string, role: Role) {
-        return this.store.saveRole( entityTypeName, role)
+        return this.store.saveRole(entityTypeName, role)
     }
 }
 
@@ -355,24 +355,39 @@ class OperationTree {
     }
 }
 
+
+export interface PMD {
+    parentNames?: string[]
+    defaultVisitorPermissions?: Set<Operation>
+    defaultUserPermissions?: Set<Operation>
+    defaultGroupMemberPermissions?: Set<Operation>
+}
+
 /**
  * with that, sophisticated permission schemes can easily be defined per entity-types.
  */
-export class PermissionsMetaData {
+export class PermissionsMetaData implements PMD {
 
+    // internally populated in the role definition process
     roles: { [roleName: string]: Role } = {}
 
-    constructor(public name: string, parentNames: string[] = [],
-                roles: Role[] = [],
-                public defaultVisitorPermissions?: Set<Operation>,
-                public defaultUserPermissions?: Set<Operation>,
-                public defaultGroupMemberPermissions?: Set<Operation>
-    ) {
-        this.roles = roles.reduce((a, c) => {
-            a[c.roleName] = c
-            return a
-        }, {})
+    constructor(readonly name: string, {
+        defaultVisitorPermissions = new Set(),
+        parentNames = [],
+        defaultUserPermissions = new Set(),
+        defaultGroupMemberPermissions = new Set()
+    }:PMD) {
+        this.parentNames = parentNames
+        this.defaultVisitorPermissions = defaultVisitorPermissions
+        this.defaultUserPermissions = defaultUserPermissions
+        this.defaultGroupMemberPermissions = defaultGroupMemberPermissions
     }
+
+    defaultVisitorPermissions: Set<string>
+    defaultUserPermissions: Set<string>
+    defaultGroupMemberPermissions: Set<string>
+
+    parentNames: string[];
 }
 
 const entityMetaDataLookup = {
@@ -386,7 +401,7 @@ const entityMetaDataLookup = {
         let metadata = this.metaDataMap.get(name)
         if (!metadata) {
             // @ts-ignore
-            metadata = clazz?.permissionsMetaData || new PermissionsMetaData(name)
+            metadata = clazz?.permissionsMetaData || new PermissionsMetaData(name,{})
             this.metaDataMap.set(name, metadata)
         }
 
@@ -394,7 +409,7 @@ const entityMetaDataLookup = {
     },
 
     findMetaData(entity: IPrivilegeManaged) {
-        return this.getOrAddMetaData(entity.constructor || entity.___name)
+        return this.getOrAddMetaData(entity.constructor == Object ?  entity.___name : entity.constructor.name)
     }
 }
 
@@ -411,7 +426,7 @@ export class Role {
         [...entityTypes].forEach(type => {
             const metaData = entityMetaDataLookup.getOrAddMetaData(type);
             metaData.roles[this.roleName] = this
-            pm.saveRole( metaData.name, this)
+            pm.saveRole(metaData.name, this)
         })
 
     }
@@ -472,7 +487,7 @@ export class MemoryPermissionStore implements IPermissionStore {
         delete this.roleRegistry[entityTypeName + '.' + roleName]
     }
 
-    async saveRole(entityTypeName:string, role: Role): Promise<void> {
+    async saveRole(entityTypeName: string, role: Role): Promise<void> {
         this.roleRegistry[entityTypeName + '.' + role.roleName] = role
     }
 
