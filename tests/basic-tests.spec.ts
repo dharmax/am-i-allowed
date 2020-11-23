@@ -47,7 +47,7 @@ describe('Testing am-i-allowed ', () => {
 
         expect(await pm.isAllowed(jeff, 'ReadDeep', workShop1)).to.be.true;
         expect(await pm.isAllowed(jeff, 'ReadCommon', workShop1)).to.be.true;
-        expect(await pm.isAllowed(jeff, 'Write', workShop1)).to.be.false;
+        expect(await pm.isAllowed(jeff, 'WriteAnything', workShop1)).to.be.false;
 
     })
 })

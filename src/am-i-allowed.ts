@@ -30,8 +30,8 @@ export interface IActor {
 export interface IPrivilegeManaged {
     id
     permissionGroupIds?: string[]
-    customPermissionChecker?: PermissionChecker;
-    entityType?: () => PrivilegeManagedEntityType
+    customPermissionChecker?: PermissionChecker
+    entityType?: () => PrivilegeManagedEntityType // should be static !
     permissionSuper?: () => Promise<IPrivilegeManaged>
 }
 
@@ -221,15 +221,17 @@ class NoPrivilegeException extends Error {
  */
 export async function standardPermissionChecker(privilegeManager: PrivilegeManager, actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<boolean> {
 
+    const operations = privilegeManager.operationTree.expandOperation(operation);
     const entityType = entityTypesLookup.findType(entity)
     const isVisitor = !actor.id
     const entityRoles = await privilegeManager.getRolesForUserId(actor.id, entity)
     const isJustUser = !isVisitor && !entityRoles.length
     const isGroupMember = actor.groups.reduce((a, c) => a || entity.permissionGroupIds?.includes(c), false)
 
-    if (isAllowed(operation))
-        return true
-
+    for (let op of operations) {
+        if (isAllowed(op))
+            return true
+    }
     if (entity.permissionSuper) {
         return privilegeManager.isAllowed(actor, operation, await entity.permissionSuper(), specialContext)
     }
@@ -237,26 +239,20 @@ export async function standardPermissionChecker(privilegeManager: PrivilegeManag
 
     function isAllowed(op: Operation): boolean {
         if (isVisitor) {
-            const operations = privilegeManager.operationTree.expandAll(entityType.defaultVisitorPermissions);
-            if (operations.has(op) || entityRoles['Visitor']?.operations.has(op))
+            if (entityType.defaultVisitorPermissions.has(op) || entityRoles['Visitor']?.operations.has(op))
                 return true
         }
 
-        if (isJustUser) {
-            const operations = privilegeManager.operationTree.expandAll(entityType.defaultUserPermissions);
-            if (operations.has(op) || entityRoles['Visitor']?.operations.has(op))
+        if (isJustUser)
+            if (entityType.defaultUserPermissions.has(op) || entityRoles['Visitor']?.operations.has(op))
                 return true
-        }
-        if (isGroupMember) {
-            const operations = privilegeManager.operationTree.expandAll(entityType.defaultGroupMemberPermissions);
-            if (operations.has(op) || entityRoles['GroupMember']?.operations.has(op))
+        if (isGroupMember)
+            if (entityType.defaultGroupMemberPermissions.has(op) || entityRoles['GroupMember']?.operations.has(op))
                 return true
-        }
-        for (let role of entityRoles) {
-            const operations = privilegeManager.operationTree.expandAll(role.operations);
-            if (operations.has(op))
+        for (let role of entityRoles)
+            if (role.operations.has(op))
                 return true
-        }
+
 
         return false
 
@@ -357,7 +353,8 @@ const entityTypesLookup = {
 
         let entry = this.typesMap.get(name)
         if (!entry) {
-            entry = (clazz as IPrivilegeManaged)?.entityType || new PrivilegeManagedEntityType(name)
+            // @ts-ignore
+            entry = clazz?.entityType || new PrivilegeManagedEntityType(name)
             this.typesMap.set(name, entry)
         }
 
