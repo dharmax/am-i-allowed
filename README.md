@@ -1,2 +1,6 @@
+# Am I Allowed
+Agnostic, zero-dependencies, powerful, flexible and very easy to use permission/authorization 
+library. 
 
-work in progress.
+## Features
+* Role-based
