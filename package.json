@@ -1,9 +1,13 @@
 {
   "name": "am-i-allowed",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "A generic, powerful yet simple, agnostic, mostly entity-oriented, permission/authorization library",
   "main": "dist/src/index.js",
   "types": "src/index.ts",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dharmax/am-i-allowed.git"
+  },
   "scripts": {
     "test": "mocha -require ts-node/register/transpile-only tests/*spec.ts",
     "build": "npx tsc"
