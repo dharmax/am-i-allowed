@@ -2,7 +2,8 @@
   "name": "am-i-allowed",
   "version": "0.2.0",
   "description": "A generic, powerful yet simple, agnostic, mostly entity-oriented, permission/authorization library",
-  "main": "src/index.ts",
+  "main": "dist/src/index.js",
+  "types": "src/index.ts",
   "scripts": {
     "test": "mocha -require ts-node/register/transpile-only tests/*spec.ts",
     "build": "npx tsc"
