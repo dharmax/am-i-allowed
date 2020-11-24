@@ -409,7 +409,7 @@ const entityMetaDataLookup = {
     },
 
     findMetaData(entity: IPrivilegeManaged) {
-        return this.getOrAddMetaData(entity.constructor == Object ?  entity.___name : entity.constructor.name)
+        return  entity.permissionsMetaData || this.getOrAddMetaData(entity.constructor == Object ?  entity.___name : entity.constructor.name)
     }
 }
 
