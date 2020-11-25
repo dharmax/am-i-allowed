@@ -1,8 +1,8 @@
 import {before} from "mocha";
 import {PrivilegeManager} from "../src/am-i-allowed";
 import {expect} from 'chai'
-import {IActor, IPrivilegeManaged, Operation, PermissionsMetaData} from "../src/types";
-import {MemoryPermissionStore} from "../src/in-memory-store";
+import {IActor, IPrivilegeManaged, Operation, PermissionsMetaData} from "../src";
+import {MemoryPermissionStore} from "../src";
 
 
 class Workshop implements IPrivilegeManaged {
