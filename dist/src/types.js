@@ -11,13 +11,14 @@ exports.IPermissionStore = IPermissionStore;
  * with that, sophisticated permission schemes can easily be defined per entity-types.
  */
 class PermissionsMetaData {
-    constructor(name, { defaultVisitorPermissions = new Set(), parentNames = [], defaultUserPermissions = new Set(), defaultGroupMemberPermissions = new Set() }) {
+    constructor(name, { defaultVisitorPermissions = new Set(), parentNames = [], defaultUserPermissions = new Set(), defaultGroupMemberPermissions = new Set(), groupMembershipMandatory = false }) {
         this.name = name;
         // internally populated in the role definition process
         this.roles = {};
         this.parentNames = parentNames;
         this.defaultVisitorPermissions = defaultVisitorPermissions;
         this.defaultUserPermissions = defaultUserPermissions;
+        this.groupMembershipMandatory = groupMembershipMandatory;
         this.defaultGroupMemberPermissions = defaultGroupMemberPermissions;
     }
 }

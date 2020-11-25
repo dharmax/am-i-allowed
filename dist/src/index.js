@@ -10,8 +10,11 @@ var __exportStar = (this && this.__exportStar) || function(m, exports) {
     for (var p in m) if (p !== "default" && !Object.prototype.hasOwnProperty.call(exports, p)) __createBinding(exports, m, p);
 };
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.DefaultOperationsTaxonomy = void 0;
 __exportStar(require("./types"), exports);
 __exportStar(require("./am-i-allowed"), exports);
 __exportStar(require("./in-memory-store"), exports);
 __exportStar(require("./permission-checker"), exports);
+var operations_taxonomy_1 = require("./operations-taxonomy");
+Object.defineProperty(exports, "DefaultOperationsTaxonomy", { enumerable: true, get: function () { return operations_taxonomy_1.DefaultOperationsTaxonomy; } });
 //# sourceMappingURL=index.js.map

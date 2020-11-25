@@ -1,8 +1,9 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Role = exports.DefaultOperationsTreeScheme = exports.PrivilegeManager = void 0;
+exports.Role = exports.PrivilegeManager = void 0;
 const types_1 = require("./types");
 const permission_checker_1 = require("./permission-checker");
+const operations_taxonomy_1 = require("./operations-taxonomy");
 /**
  * This is the main class. Normally you'd need just one PrivilegeManager for the whole application.
  * Use it to check permissions.
@@ -19,12 +20,13 @@ const permission_checker_1 = require("./permission-checker");
 class PrivilegeManager {
     /**
      * Builds a privilege manager instance.
-     * @param store the persistency backend for the permission storage
-     * @param operationsPlugin an optional opreation tree transformer, in case you wish to alter the default one, add more operations, etc
+     * @param store the persistence backend for the permission storage
+     * @param operationsTransformer an optional operation tree transformer, in case you wish to alter the default one, add more operations, etc
      */
-    constructor(store, operationsPlugin = (operationTree) => operationTree) {
+    constructor(store, operationsTransformer = (operationTree) => operationTree) {
         this.store = store;
-        this.operationTree = new OperationTree(operationsPlugin(exports.DefaultOperationsTreeScheme));
+        this.operationTree = new OperationTree(operationsTransformer(operations_taxonomy_1.DefaultOperationsTaxonomy));
+        this.entityMetaDataLookup = new EntityMetaDataLookup(this);
     }
     /**
      * Check for if the actor is allowed to do something and throws an exception if he isn't
@@ -66,7 +68,7 @@ class PrivilegeManager {
         return this.store.assignRole(entity.id, actor?.id || actor, role.roleName);
     }
     async getRolesForUserId(id, entity) {
-        return this.store.getRolesForUser(id, entity, this.findMetaData(entity));
+        return this.store.getRolesForUser(id, entity, await this.findMetaData(entity));
     }
     /**
      * Define a new role. Also add itself to the corresponding entityType
@@ -84,85 +86,13 @@ class PrivilegeManager {
         await this.store.saveRole(entityTypeName, role);
     }
     getOrAddMetaData(type) {
-        return entityMetaDataLookup.getOrAddMetaData(type);
+        return this.entityMetaDataLookup.getOrAddMetaData(type);
     }
-    findMetaData(entity) {
-        return entityMetaDataLookup.findMetaData(entity);
+    async findMetaData(entity) {
+        return this.entityMetaDataLookup.findMetaData(entity);
     }
 }
 exports.PrivilegeManager = PrivilegeManager;
-/**
- * This structure defines the operations taxonomy. When a permission for a specific operation is given, it implicitly
- * denotes that its child operations are also permitted. The purpose of such a taxonomy is to save redundant coding and
- * confusing/illogical permission definitions.
- * The tree can be altered @see PrivilegeManager constructor
- */
-exports.DefaultOperationsTreeScheme = {
-    Admin: {
-        AddAdmin: {},
-        DeleteDatabase: {
-            ManageDatabase: {
-                ManageUsers: {
-                    SendMessage: {},
-                }
-            }
-        },
-        Manage: {
-            PowerUser: {
-                Execute: {
-                    GenericAction: {},
-                    Trade: {
-                        AcceptPayment: {
-                            Sell: {
-                                Load: {}
-                            },
-                        },
-                        Buy: {
-                            Lease: {},
-                            Pay: {},
-                        },
-                    },
-                },
-                Join: {},
-                Disable: {
-                    Ban: {
-                        Suspend: {
-                            Warn: {},
-                            Flag: {}
-                        }
-                    }
-                },
-                Delete: {
-                    EditAnything: {
-                        WriteAnything: {
-                            WriteCommon: {
-                                ReadCommon: {}
-                            },
-                            ReadAnything: {
-                                ReadDeep: {
-                                    ReadCommon: {
-                                        ReadHeadline: {}
-                                    },
-                                }
-                            },
-                        },
-                        AddStuff: {
-                            Comment: {},
-                            Rate: {
-                                DownVote: {
-                                    UpVote: {}
-                                }
-                            },
-                            DetachItem: {
-                                AttachItem: {}
-                            }
-                        }
-                    }
-                },
-            }
-        }
-    }
-};
 class NoPrivilegeException extends Error {
     constructor(actor, operation, entity, specialContext) {
         super(`${actor.id} attempted unprivileged operation ${operation.toString()} on ${entity.id} with ${JSON.stringify(specialContext || '')}`);
@@ -209,8 +139,11 @@ class OperationTree {
         return this.parentsMap.has(operation);
     }
 }
-const entityMetaDataLookup = {
-    metaDataMap: new Map(),
+class EntityMetaDataLookup {
+    constructor(privilegeManager) {
+        this.privilegeManager = privilegeManager;
+        this.metaDataMap = new Map();
+    }
     getOrAddMetaData(entityType) {
         const name = typeof entityType == 'string' ? entityType : entityType.name;
         const clazz = typeof entityType == 'string' ? null : entityType;
@@ -221,11 +154,21 @@ const entityMetaDataLookup = {
             this.metaDataMap.set(name, metadata);
         }
         return metadata;
-    },
-    findMetaData(entity) {
-        return entity.permissionsMetaData || this.getOrAddMetaData(entity.constructor == Object ? entity.___name : entity.constructor.name);
     }
-};
+    async findMetaData(entity) {
+        let permissionsMetaDataOnEntity = entity.permissionsMetaData;
+        permissionsMetaDataOnEntity = typeof permissionsMetaDataOnEntity == "function" ? await permissionsMetaDataOnEntity() : permissionsMetaDataOnEntity;
+        permissionsMetaDataOnEntity._validated ?? (permissionsMetaDataOnEntity._validated = this.validateMetaData(permissionsMetaDataOnEntity));
+        return permissionsMetaDataOnEntity || this.getOrAddMetaData(entity.constructor == Object ? entity.___name : entity.constructor.name);
+    }
+    validateMetaData(md) {
+        [...md.defaultGroupMemberPermissions, ...md.defaultUserPermissions, ...md.defaultVisitorPermissions].forEach(o => {
+            if (!this.privilegeManager.operationTree.find(o))
+                throw new Error('Operation "${o}" is not in the taxonomy');
+        });
+        return true;
+    }
+}
 /**
  * Role defines the set of permitted operations. Each role is applicable to a provided entity types
  */

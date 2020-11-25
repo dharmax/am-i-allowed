@@ -1,5 +1,6 @@
 import {IActor, IPermissionStore, IPrivilegeManaged, Operation, PermissionsMetaData} from "./types";
 import {standardPermissionChecker} from "./permission-checker";
+import {DefaultOperationsTaxonomy} from "./operations-taxonomy";
 
 /**
  * This is the main class. Normally you'd need just one PrivilegeManager for the whole application.
@@ -17,14 +18,16 @@ import {standardPermissionChecker} from "./permission-checker";
 export class PrivilegeManager {
 
     readonly operationTree: OperationTree
+    private entityMetaDataLookup: EntityMetaDataLookup;
 
     /**
      * Builds a privilege manager instance.
-     * @param store the persistency backend for the permission storage
-     * @param operationsPlugin an optional opreation tree transformer, in case you wish to alter the default one, add more operations, etc
+     * @param store the persistence backend for the permission storage
+     * @param operationsTransformer an optional operation tree transformer, in case you wish to alter the default one, add more operations, etc
      */
-    constructor(public store: IPermissionStore, operationsPlugin = (operationTree) => operationTree) {
-        this.operationTree = new OperationTree(operationsPlugin(DefaultOperationsTreeScheme))
+    constructor(public store: IPermissionStore, operationsTransformer = (operationTree) => operationTree) {
+        this.operationTree = new OperationTree(operationsTransformer(DefaultOperationsTaxonomy))
+        this.entityMetaDataLookup = new EntityMetaDataLookup(this)
     }
 
     /**
@@ -95,91 +98,18 @@ export class PrivilegeManager {
     }
 
     getOrAddMetaData(type: string | Function) {
-        return entityMetaDataLookup.getOrAddMetaData(type)
+        return this.entityMetaDataLookup.getOrAddMetaData(type)
     }
 
     async findMetaData(entity: IPrivilegeManaged) {
-        return entityMetaDataLookup.findMetaData(entity)
-    }
-}
-
-/**
- * This structure defines the operations taxonomy. When a permission for a specific operation is given, it implicitly
- * denotes that its child operations are also permitted. The purpose of such a taxonomy is to save redundant coding and
- * confusing/illogical permission definitions.
- * The tree can be altered @see PrivilegeManager constructor
- */
-export const DefaultOperationsTreeScheme = {
-    Admin: {
-        AddAdmin: {},
-        DeleteDatabase: {
-            ManageDatabase: {
-                ManageUsers: {
-                    SendMessage: {},
-                }
-            }
-        },
-        Manage: {
-            PowerUser: {
-                Execute: {
-                    GenericAction: {},
-                    Trade: {
-                        AcceptPayment: {
-                            Sell: {
-                                Load: {}
-                            },
-                        },
-                        Buy: {
-                            Lease: {},
-                            Pay: {},
-                        },
-                    },
-                },
-                Join: {},
-                Disable: {
-                    Ban: {
-                        Suspend: {
-                            Warn: {},
-                            Flag: {}
-                        }
-                    }
-                },
-                Delete: {
-                    EditAnything: {
-                        WriteAnything: {
-                            WriteCommon: {
-                                ReadCommon: {}
-                            },
-                            ReadAnything: {
-                                ReadDeep: {
-                                    ReadCommon: {
-                                        ReadHeadline: {}
-                                    },
-                                }
-                            },
-                        },
-                        AddStuff: {
-                            Comment: {},
-                            Rate: {
-                                DownVote: {
-                                    UpVote: {}
-                                }
-                            },
-                            DetachItem: {
-                                AttachItem: {}
-                            }
-                        }
-                    }
-                },
-            }
-        }
+        return this.entityMetaDataLookup.findMetaData(entity)
     }
 }
 
 
 class NoPrivilegeException extends Error {
     constructor(actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any) {
-        super(`${actor.id} attempted unprivileged operation ${operation.toString()} on ${entity.id} with ${JSON.stringify(specialContext||'')}`)
+        super(`${actor.id} attempted unprivileged operation ${operation.toString()} on ${entity.id} with ${JSON.stringify(specialContext || '')}`)
     }
 
     message: string;
@@ -197,7 +127,6 @@ class OperationTree {
     private parentsMap = new Map<Operation, Operation[]>()
 
     constructor(private tree: object) {
-
         this.processTree(tree)
     }
 
@@ -239,9 +168,12 @@ class OperationTree {
 }
 
 
-const entityMetaDataLookup = {
+class EntityMetaDataLookup {
 
-    metaDataMap: new Map<string, PermissionsMetaData>(),
+    metaDataMap = new Map<string, PermissionsMetaData>()
+
+    constructor(private privilegeManager: PrivilegeManager) {
+    }
 
     getOrAddMetaData(entityType: string | Function): PermissionsMetaData {
         const name = typeof entityType == 'string' ? entityType : entityType.name
@@ -255,13 +187,23 @@ const entityMetaDataLookup = {
         }
 
         return metadata
-    },
+    }
 
     async findMetaData(entity: IPrivilegeManaged) {
         let permissionsMetaDataOnEntity = entity.permissionsMetaData
         permissionsMetaDataOnEntity = typeof permissionsMetaDataOnEntity == "function" ? await permissionsMetaDataOnEntity() : permissionsMetaDataOnEntity
+        permissionsMetaDataOnEntity && (permissionsMetaDataOnEntity._validated ??= this.validateMetaData(permissionsMetaDataOnEntity))
 
         return permissionsMetaDataOnEntity || this.getOrAddMetaData(entity.constructor == Object ? entity.___name : entity.constructor.name)
+    }
+
+    private validateMetaData(md: PermissionsMetaData) {
+        [...md.defaultGroupMemberPermissions, ...md.defaultUserPermissions, ...md.defaultVisitorPermissions].forEach(
+            o => {
+                if (!this.privilegeManager.operationTree.find(o))
+                    throw new Error('Operation "${o}" is not in the taxonomy')
+            })
+        return true;
     }
 }
 

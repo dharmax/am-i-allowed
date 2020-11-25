@@ -14,16 +14,17 @@ import {PrivilegeManager} from "./am-i-allowed";
 export async function standardPermissionChecker(privilegeManager: PrivilegeManager, actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<boolean> {
 
     const operations = privilegeManager.operationTree.expandOperation(operation);
-    const entityType = await privilegeManager.findMetaData(entity)
+    const metaData = await privilegeManager.findMetaData(entity)
     const isVisitor = !actor.id
     const entityRoles = await privilegeManager.getRolesForUserId(actor.id, entity)
     const isJustUser = !isVisitor && !entityRoles.length
     const isGroupMember = actor.groups.reduce((a, c) => a || entity.permissionGroupIds?.includes(c), false)
 
-    for (let op of operations) {
-        if (isAllowed(op))
-            return true
-    }
+    if (!metaData.groupMembershipMandatory || isGroupMember)
+        for (let op of operations) {
+            if (isAllowed(op))
+                return true
+        }
     if (entity.permissionSuper) {
         return privilegeManager.isAllowed(actor, operation, await entity.permissionSuper(), specialContext)
     }
@@ -35,15 +36,15 @@ export async function standardPermissionChecker(privilegeManager: PrivilegeManag
                 return true
 
         if (isGroupMember)
-            if (entityType.defaultGroupMemberPermissions.has(op) || entityRoles['GroupMember']?.operations.has(op))
+            if (metaData.defaultGroupMemberPermissions.has(op) || entityRoles['GroupMember']?.operations.has(op))
                 return true
 
         if (isJustUser || isVisitor)
-            if (entityType.defaultUserPermissions.has(op) || entityRoles['User']?.operations.has(op))
+            if (metaData.defaultUserPermissions.has(op) || entityRoles['User']?.operations.has(op))
                 return true
 
         if (isVisitor) {
-            if (entityType.defaultVisitorPermissions.has(op) || entityRoles['Visitor']?.operations.has(op))
+            if (metaData.defaultVisitorPermissions.has(op) || entityRoles['Visitor']?.operations.has(op))
                 return true
         }
 

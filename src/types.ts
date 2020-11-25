@@ -76,6 +76,7 @@ export interface PMD {
     defaultVisitorPermissions?: Set<Operation>
     defaultUserPermissions?: Set<Operation>
     defaultGroupMemberPermissions?: Set<Operation>
+    groupMembershipMandatory?: boolean
 }
 
 /**
@@ -85,22 +86,25 @@ export class PermissionsMetaData implements PMD {
 
     // internally populated in the role definition process
     roles: { [roleName: string]: Role } = {}
+    _validated: boolean; // internal
 
     constructor(readonly name: string, {
         defaultVisitorPermissions = new Set(),
         parentNames = [],
         defaultUserPermissions = new Set(),
-        defaultGroupMemberPermissions = new Set()
+        defaultGroupMemberPermissions = new Set(),
+        groupMembershipMandatory = false
     }: PMD) {
         this.parentNames = parentNames
         this.defaultVisitorPermissions = defaultVisitorPermissions
         this.defaultUserPermissions = defaultUserPermissions
+        this.groupMembershipMandatory = groupMembershipMandatory
         this.defaultGroupMemberPermissions = defaultGroupMemberPermissions
     }
 
     defaultVisitorPermissions: Set<string>
     defaultUserPermissions: Set<string>
     defaultGroupMemberPermissions: Set<string>
-
+    groupMembershipMandatory: boolean
     parentNames: string[];
 }
