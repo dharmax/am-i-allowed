@@ -3,14 +3,14 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const mocha_1 = require("mocha");
 const am_i_allowed_1 = require("../src/am-i-allowed");
 const chai_1 = require("chai");
-const types_1 = require("../src/types");
-const in_memory_store_1 = require("../src/in-memory-store");
+const src_1 = require("../src");
+const src_2 = require("../src");
 class Workshop {
     constructor(id) {
         this.id = id;
     }
 }
-Workshop.permissionsMetaData = new types_1.PermissionsMetaData('Workshop', {});
+Workshop.permissionsMetaData = new src_1.PermissionsMetaData('Workshop', {});
 describe('Testing am-i-allowed ', () => {
     const myUsers = {
         Jeff: { id: '1', groups: ['workers'] },
@@ -22,12 +22,12 @@ describe('Testing am-i-allowed ', () => {
             ___name: 'System',
             id: 'System',
             permissionGroupIds: ['admin'],
-            permissionsMetaData: new types_1.PermissionsMetaData('System', {
+            permissionsMetaData: new src_1.PermissionsMetaData('System', {
                 defaultGroupMemberPermissions: new Set(['Admin'])
             })
         }
     };
-    let pm = new am_i_allowed_1.PrivilegeManager(new in_memory_store_1.MemoryPermissionStore());
+    let pm = new am_i_allowed_1.PrivilegeManager(new src_2.MemoryPermissionStore());
     const RoleSalesPerson = pm.addRole('Seller', ['ReadDeep', 'Sell'], Workshop);
     mocha_1.before(() => {
     });

@@ -158,7 +158,7 @@ class EntityMetaDataLookup {
     async findMetaData(entity) {
         let permissionsMetaDataOnEntity = entity.permissionsMetaData;
         permissionsMetaDataOnEntity = typeof permissionsMetaDataOnEntity == "function" ? await permissionsMetaDataOnEntity() : permissionsMetaDataOnEntity;
-        permissionsMetaDataOnEntity._validated ?? (permissionsMetaDataOnEntity._validated = this.validateMetaData(permissionsMetaDataOnEntity));
+        permissionsMetaDataOnEntity && (permissionsMetaDataOnEntity._validated ?? (permissionsMetaDataOnEntity._validated = this.validateMetaData(permissionsMetaDataOnEntity)));
         return permissionsMetaDataOnEntity || this.getOrAddMetaData(entity.constructor == Object ? entity.___name : entity.constructor.name);
     }
     validateMetaData(md) {

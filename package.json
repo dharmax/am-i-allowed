@@ -9,6 +9,7 @@
     "url": "git+https://github.com/dharmax/am-i-allowed.git"
   },
   "scripts": {
+    "prepublish": "npx tsc",
     "test": "mocha -require ts-node/register/transpile-only tests/*spec.ts",
     "build": "npx tsc"
   },
