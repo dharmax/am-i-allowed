@@ -1,6 +1,6 @@
 {
   "name": "am-i-allowed",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "description": "A generic, powerful yet simple, agnostic, mostly entity-oriented, permission/authorization library",
   "main": "dist/src/index.js",
   "types": "src/index.ts",

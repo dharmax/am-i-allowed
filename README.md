@@ -94,6 +94,71 @@ and, for example, use the specialContext in your new or additional logic (ABAC s
 1. Not just model entities may be managed by the privilege manager, but also static objects, that may
 represent virtual functional entities, such as "System Administration" and so on. If it is such an object,
 you can use ids such as "System", and make sure to add `__name` member to it (can also be "System").
+
+
+# Simple Example
+```
+
+class Workshop implements IPrivilegeManaged {
+    constructor(readonly id: string) {}
+    static permissionsMetaData = new PermissionsMetaData('Workshop',{})
+}
+
+// Emulates a user store
+const myUsers: { [name: string]: IActor } = {
+    Jeff: {id: '1', groups: ['workers']},
+    Shay: {id: '2', groups: ['admin']}
+}
+// Emulates entity store.  
+const myEntities: { [name: string]: IPrivilegeManaged } = {
+    Workshop1: new Workshop('12'),
+}
+// Emulates a virtual, logical entity, that represents system-level administration
+const   sysAdmin = {
+    ___name: 'System',
+    id: 'System',
+    permissionGroupIds: ['admin'],
+    permissionsMetaData: new PermissionsMetaData('System', {
+        defaultGroupMemberPermissions: new Set<Operation>(['Admin'])
+    })
+}
+
+// creating the privilege manager
+const pm = new PrivilegeManager(new MemoryPermissionStore())
+
+// defining a role that relates to Workshops
+const RoleSalesPerson = pm.addRole('Seller', ['ReadDeep', 'Sell'], Workshop)
+
+// emulates retrieval of users and entities
+const workShop1 = myEntities['Workshop1'];
+const jeff = myUsers['Jeff'];
+const shai = myUsers['Shay']
+
+// assigns a role for a user on a specific workshop 
+await pm.assignRole(workShop1, jeff, RoleSalesPerson)
+
+// direct permission check
+expect(await pm.isAllowed(jeff, 'ReadDeep', workShop1), true)
+
+// inferenced permission check (ReadCommon is underneath ReadDeep)
+expect(await pm.isAllowed(jeff, 'ReadCommon', workShop1), true)
+
+// jeff doesn't have a permission to to that
+expect(await pm.isAllowed(jeff, 'WriteAnything', workShop1), false)
+
+// shai may do that, because he belongs to the admin group
+expect(await pm.isAllowed(shai, 'EditAnything', sysAdmin), true)
+
+// jeff doesn't have that permission
+expect(await pm.isAllowed(jeff, 'EditAnything', sysAdmin), false)
+
+function expect( result, expectation) {
+    if (result != expectation)
+     throw new Error('failed')
+}
+
+```
+
  
 
 ## License
