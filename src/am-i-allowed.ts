@@ -72,7 +72,7 @@ export class PrivilegeManager {
     }
 
     async getRolesForUserId(id: any, entity: IPrivilegeManaged): Promise<Role[]> {
-        return this.store.getRolesForUser(id, entity, this.findMetaData(entity))
+        return this.store.getRolesForUser(id, entity, await this.findMetaData(entity))
     }
 
     /**
@@ -98,7 +98,7 @@ export class PrivilegeManager {
         return entityMetaDataLookup.getOrAddMetaData(type)
     }
 
-    findMetaData(entity: IPrivilegeManaged) {
+    async findMetaData(entity: IPrivilegeManaged) {
         return entityMetaDataLookup.findMetaData(entity)
     }
 }
@@ -257,8 +257,11 @@ const entityMetaDataLookup = {
         return metadata
     },
 
-    findMetaData(entity: IPrivilegeManaged) {
-        return entity.permissionsMetaData || this.getOrAddMetaData(entity.constructor == Object ? entity.___name : entity.constructor.name)
+    async findMetaData(entity: IPrivilegeManaged) {
+        let permissionsMetaDataOnEntity = entity.permissionsMetaData
+        permissionsMetaDataOnEntity = typeof permissionsMetaDataOnEntity == "function" ? await permissionsMetaDataOnEntity() : permissionsMetaDataOnEntity
+
+        return permissionsMetaDataOnEntity || this.getOrAddMetaData(entity.constructor == Object ? entity.___name : entity.constructor.name)
     }
 }
 

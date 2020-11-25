@@ -14,7 +14,7 @@ import {PrivilegeManager} from "./am-i-allowed";
 export async function standardPermissionChecker(privilegeManager: PrivilegeManager, actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<boolean> {
 
     const operations = privilegeManager.operationTree.expandOperation(operation);
-    const entityType = privilegeManager.findMetaData(entity)
+    const entityType = await privilegeManager.findMetaData(entity)
     const isVisitor = !actor.id
     const entityRoles = await privilegeManager.getRolesForUserId(actor.id, entity)
     const isJustUser = !isVisitor && !entityRoles.length

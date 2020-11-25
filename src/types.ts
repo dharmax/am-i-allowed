@@ -42,7 +42,7 @@ export interface IPrivilegeManaged {
     /**
      * If meta data is not provided, default one is automatically created. It must be a static member.
      * */
-    permissionsMetaData?: PermissionsMetaData
+    permissionsMetaData?: PermissionsMetaData | (() => Promise<PermissionsMetaData>)
 
     /**
      *optionally, you can point to another object to inherit its permissions. It's good for tree like structures, when
