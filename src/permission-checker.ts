@@ -1,4 +1,4 @@
-import {IActor, IPrivilegeManaged, Operation, PermissionChecker} from "./types";
+import {GROUP_ROLE_PREFIX, IActor, IPrivilegeManaged, Operation, PermissionChecker} from "./types";
 import {PrivilegeManager} from "./am-i-allowed";
 
 /**
@@ -11,14 +11,15 @@ import {PrivilegeManager} from "./am-i-allowed";
  * @param entity
  * @param specialContext
  */
-export const  standardPermissionChecker: PermissionChecker = async (privilegeManager: PrivilegeManager, actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<boolean>=> {
+export const standardPermissionChecker: PermissionChecker = async (privilegeManager: PrivilegeManager, actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<boolean> => {
 
     const operations = privilegeManager.operationTree.expandOperation(operation);
     const metaData = await privilegeManager.findMetaData(entity)
-    const isVisitor = !actor.id
     const entityRoles = await privilegeManager.getRolesForUserId(actor.id, entity)
-    const isJustUser = !isVisitor && !entityRoles.length
-    const isGroupMember = actor.groups.reduce((a, c) => a || entity.permissionGroupIds?.includes(c), false)
+    const isVisitor = !actor.id
+    const isAUser = !isVisitor
+    const commonGroups = actor?.groups.filter(g => entity.permissionGroupIds?.includes(g)) || []
+    const isGroupMember = commonGroups?.length > 0
 
     if (!metaData.groupMembershipMandatory || isGroupMember)
         for (let op of operations) {
@@ -35,11 +36,17 @@ export const  standardPermissionChecker: PermissionChecker = async (privilegeMan
             if (role.operations.has(op))
                 return true
 
+        for (let group of commonGroups) {
+            const groupMemberRole = metaData.roles[GROUP_ROLE_PREFIX + group]
+            if (groupMemberRole && groupMemberRole.operations.has(op))
+                return true
+        }
+
         if (isGroupMember)
             if (metaData.defaultGroupMemberPermissions.has(op) || entityRoles['GroupMember']?.operations.has(op))
                 return true
 
-        if (isJustUser || isVisitor)
+        if (isAUser)
             if (metaData.defaultUserPermissions.has(op) || entityRoles['User']?.operations.has(op))
                 return true
 

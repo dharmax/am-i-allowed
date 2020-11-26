@@ -108,3 +108,5 @@ export class PermissionsMetaData implements PMD {
     groupMembershipMandatory: boolean
     parentNames: string[];
 }
+
+export const GROUP_ROLE_PREFIX = 'MemberOf';

@@ -94,6 +94,8 @@ and, for example, use the specialContext in your new or additional logic (ABAC s
 1. Not just model entities may be managed by the privilege manager, but also static objects, that may
 represent virtual functional entities, such as "System Administration" and so on. If it is such an object,
 you can use ids such as "System", and make sure to add `__name` member to it (can also be "System").
+1. You can define specific roles for specific group members over an entity type. Simply add a role that
+have the name `MemberOfMyGroup` where `MyGroup` is the name/id of the group.
 
 
 # Simple Example

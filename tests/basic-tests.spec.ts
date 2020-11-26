@@ -1,27 +1,58 @@
 import {before} from "mocha";
-import {PrivilegeManager} from "../src/am-i-allowed";
+import {
+    IActor,
+    IPrivilegeManaged,
+    MemoryPermissionStore,
+    Operation,
+    PermissionsMetaData,
+    PrivilegeManager,
+    standardPermissionChecker
+} from "../src";
 import {expect} from 'chai'
-import {IActor, IPrivilegeManaged, Operation, PermissionsMetaData} from "../src";
-import {MemoryPermissionStore} from "../src";
 
 
 class Workshop implements IPrivilegeManaged {
     constructor(readonly id: string) {
-
     }
 
-    static permissionsMetaData = new PermissionsMetaData('Workshop',{})
+    static permissionsMetaData = new PermissionsMetaData('Workshop',{
+        defaultUserPermissions: new Set(['Buy','Order'])
+    })
 
+}
+
+class SpecialWorkshop extends Workshop {
+
+    constructor( id:string, public orderHour: 'Morning' | 'Afternoon' | 'All day') {
+        super(id);
+    }
+    static customPermissionChecker = async (privilegeManager: PrivilegeManager, actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<boolean> =>{
+        // @ts-ignore
+        const normalResponse = await standardPermissionChecker(...arguments)
+        // no point to check further
+        if ( !normalResponse)
+            return false
+
+        const workshop = entity as SpecialWorkshop
+
+        if (workshop.orderHour ==='All day' || !['Order', 'Buy'].includes(operation) )
+            return  true
+
+        return  isMorning() && workshop.orderHour === 'Morning'
+
+    }
 }
 
 describe('Testing am-i-allowed ', () => {
 
     const myUsers: { [name: string]: IActor } = {
         Jeff: {id: '1', groups: ['workers']},
-        Shay: {id: '2', groups: ['admin']}
+        Shay: {id: '2', groups: ['admin']},
+        customer1: {id:'3',  groups:['customers']}
     }
     const myEntities: { [name: string]: IPrivilegeManaged } = {
         Workshop: new Workshop('12'),
+        MorningWorkshop: new SpecialWorkshop('13', 'Morning'),
         sysAdmin: {
             ___name: 'System',
             id: 'System',
@@ -46,9 +77,12 @@ describe('Testing am-i-allowed ', () => {
 
 
         const workShop1 = myEntities['Workshop'];
+        const morningWorkshop = myEntities['MorningWorkshop'];
         const jeff = myUsers['Jeff'];
         const shai = myUsers['Shay']
         const sysAdmin = myEntities['sysAdmin']
+        const customer = myUsers['customer1']
+
         await pm.assignRole(workShop1, jeff, RoleSalesPerson)
 
         expect(await pm.isAllowed(jeff, 'ReadDeep', workShop1)).to.be.true;
@@ -57,6 +91,15 @@ describe('Testing am-i-allowed ', () => {
         expect(await pm.isAllowed(shai, 'EditAnything', sysAdmin)).to.be.true;
         expect(await pm.isAllowed(jeff, 'EditAnything', sysAdmin)).to.be.false;
 
+        expect(await pm.isAllowed(jeff, 'Buy', workShop1)).to.be.true;
+        expect(await pm.isAllowed(customer, 'Order', workShop1)).to.be.true;
+        expect(await pm.isAllowed(customer, 'Order', morningWorkshop)).to.be.equal(isMorning());
+
+
     })
 })
 
+function isMorning() {
+    const hour = (new Date()).getHours()
+    return hour < 12  && hour > 6
+}
