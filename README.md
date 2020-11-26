@@ -99,7 +99,7 @@ have the name `MemberOfMyGroup` where `MyGroup` is the name/id of the group.
 
 
 # Simple Example
-```
+```ts
 
 class Workshop implements IPrivilegeManaged {
     constructor(readonly id: string) {}
