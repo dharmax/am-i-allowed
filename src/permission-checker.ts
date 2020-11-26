@@ -1,4 +1,4 @@
-import {IActor, IPrivilegeManaged, Operation} from "./types";
+import {IActor, IPrivilegeManaged, Operation, PermissionChecker} from "./types";
 import {PrivilegeManager} from "./am-i-allowed";
 
 /**
@@ -11,7 +11,7 @@ import {PrivilegeManager} from "./am-i-allowed";
  * @param entity
  * @param specialContext
  */
-export async function standardPermissionChecker(privilegeManager: PrivilegeManager, actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<boolean> {
+export const  standardPermissionChecker: PermissionChecker = async (privilegeManager: PrivilegeManager, actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<boolean>=> {
 
     const operations = privilegeManager.operationTree.expandOperation(operation);
     const metaData = await privilegeManager.findMetaData(entity)
