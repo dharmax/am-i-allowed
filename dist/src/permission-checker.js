@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.standardPermissionChecker = void 0;
+const types_1 = require("./types");
 /**
  * This is the standardPermissionChecker logic. First, explicit role assignments are checked, then group related, which means,
  * if user and entity groups intersect, then either the default group permissions are used or the entities GroupMember role is used,
@@ -11,13 +12,14 @@ exports.standardPermissionChecker = void 0;
  * @param entity
  * @param specialContext
  */
-async function standardPermissionChecker(privilegeManager, actor, operation, entity, specialContext) {
+const standardPermissionChecker = async (privilegeManager, actor, operation, entity, specialContext) => {
     const operations = privilegeManager.operationTree.expandOperation(operation);
     const metaData = await privilegeManager.findMetaData(entity);
-    const isVisitor = !actor.id;
     const entityRoles = await privilegeManager.getRolesForUserId(actor.id, entity);
-    const isJustUser = !isVisitor && !entityRoles.length;
-    const isGroupMember = actor.groups.reduce((a, c) => a || entity.permissionGroupIds?.includes(c), false);
+    const isVisitor = !actor.id;
+    const isAUser = !isVisitor;
+    const commonGroups = actor?.groups.filter(g => entity.permissionGroupIds?.includes(g)) || [];
+    const isGroupMember = commonGroups?.length > 0;
     if (!metaData.groupMembershipMandatory || isGroupMember)
         for (let op of operations) {
             if (isAllowed(op))
@@ -31,10 +33,15 @@ async function standardPermissionChecker(privilegeManager, actor, operation, ent
         for (let role of entityRoles)
             if (role.operations.has(op))
                 return true;
+        for (let group of commonGroups) {
+            const groupMemberRole = metaData.roles[types_1.GROUP_ROLE_PREFIX + group];
+            if (groupMemberRole && groupMemberRole.operations.has(op))
+                return true;
+        }
         if (isGroupMember)
             if (metaData.defaultGroupMemberPermissions.has(op) || entityRoles['GroupMember']?.operations.has(op))
                 return true;
-        if (isJustUser || isVisitor)
+        if (isAUser)
             if (metaData.defaultUserPermissions.has(op) || entityRoles['User']?.operations.has(op))
                 return true;
         if (isVisitor) {
@@ -43,6 +50,6 @@ async function standardPermissionChecker(privilegeManager, actor, operation, ent
         }
         return false;
     }
-}
+};
 exports.standardPermissionChecker = standardPermissionChecker;
 //# sourceMappingURL=permission-checker.js.map

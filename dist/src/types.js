@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.PermissionsMetaData = exports.IPermissionStore = void 0;
+exports.GROUP_ROLE_PREFIX = exports.PermissionsMetaData = exports.IPermissionStore = void 0;
 /**
  * You can use anything as the persistent storage for the permission system, as long as it is compatible with this interface
  */
@@ -23,4 +23,5 @@ class PermissionsMetaData {
     }
 }
 exports.PermissionsMetaData = PermissionsMetaData;
+exports.GROUP_ROLE_PREFIX = 'MemberOf';
 //# sourceMappingURL=types.js.map

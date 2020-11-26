@@ -24,16 +24,24 @@ exports.DefaultOperationsTaxonomy = {
                     Trade: {
                         AcceptPayment: {
                             Sell: {
-                                Load: {}
+                                Loan: {},
+                                Rent: {}
                             },
                         },
                         Buy: {
                             Lease: {},
                             Pay: {},
+                            Order: {}
                         },
                     },
                 },
-                Join: {},
+                Eject: {
+                    Invite: {
+                        Join: {
+                            Leave: {}
+                        },
+                    }
+                },
                 Disable: {
                     Ban: {
                         Suspend: {
