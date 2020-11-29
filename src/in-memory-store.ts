@@ -58,4 +58,25 @@ export class MemoryPermissionStore implements IPermissionStore {
         this.roleRegistry[entityTypeName + '.' + role.roleName] = role
     }
 
+    async getRoleOwners(entity: IPrivilegeManaged): Promise<{ [actorId: string]: string[] }> {
+        return this.roleAssignmentDatabase[entity.id]
+    }
+
+    async getActorRoles(actorId, skip: number, limit: number): Promise<{ [p: string]: string[] }> {
+
+        const entries: { [entityId: string]: string[] } = {}
+        let counter = 0
+        for (let [e, assignments] of Object.entries(this.roleAssignmentDatabase)) {
+            if (counter < skip)
+                continue
+            if (counter >= limit)
+                break
+            const actorAssignments = assignments[actorId];
+            if (actorAssignments) {
+                entries[e] = actorAssignments
+            }
+        }
+        return entries
+    }
+
 }

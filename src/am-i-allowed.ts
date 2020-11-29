@@ -65,6 +65,25 @@ export class PrivilegeManager {
     }
 
     /**
+     * @return all the actors that have explicit roles assigned on that entity
+     * @param entity the entity
+     */
+    getRoleOwners(entity: IPrivilegeManaged): Promise<{ [p: string]: string[] }> {
+        return this.store.getRoleOwners(entity)
+    }
+
+    /**
+     * @return all the roles explicitly assigned to the actor on any entity
+     * @param actorId
+     * @param skip pagination support
+     * @param limit pagination support
+     */
+    getActorRoles(actorId, skip = 0, limit = 1000): Promise<{ [entityId: string]: string[] }> {
+        return this.store.getActorRoles(actorId, skip,limit)
+    }
+
+
+    /**
      * assign a role to use in entity
      * @param entity the entity
      * @param actor either IActor or an id
@@ -74,7 +93,12 @@ export class PrivilegeManager {
         return this.store.assignRole(entity.id, actor?.id || actor, role.roleName)
     }
 
-    async getRolesForUserId(id: any, entity: IPrivilegeManaged): Promise<Role[]> {
+    /**
+     * @Return the roles the actor have on an entity
+     * @param id
+     * @param entity
+     */
+    async getRolesForActor(id: any, entity: IPrivilegeManaged): Promise<Role[]> {
         return this.store.getRolesForUser(id, entity, await this.findMetaData(entity))
     }
 

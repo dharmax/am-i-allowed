@@ -7,10 +7,10 @@ Throughout the last 20 years or so, I worked with different implementations of p
 to implement such things myself three different times (and used each one in more than one application) in
 various languages.
  
-I learned that a good permission system can benefit and enrich a product quite a bit, so it was always 
-one of the first thing i implemented in new applications.  
+I learned that a good permission system can benefit and enrich a product quite a bit, feature wise, with little effort,
+so it was always one of the first thing i implemented in new applications.  
 
-This is the 4th time i implemented such a library, and i managed to make it totally agnostic to
+This is the 4th time i write such a library, and i managed to make it totally agnostic to
 anything but the JavaScript language. 
 
 It is a rather well documented, small TypeScript code, so for now most of the documentation
@@ -24,17 +24,19 @@ would be in the source.
 * Built in rich, expandable Operations taxonomy that makes life easier.
 * Smart default system to minimize coding and configuration of roles etc.   
 * Sophisticated built-in logic which is easily expandable/replaced.
-* The above feature set provides a practical support for either RBAC, ABAC, DAC and MAC. 
+* The above feature set provides a practical support for either RBAC, ABAC, DAC and MAC.
+* It is easy to write a fontend for it, for role assignment and definition, etc., as well as to wrap it as a micro
+service and externalize its elegant API. 
  
  ### Advantages over existing solutions
  There are other (very good) libraries that do similar things. This one, however, is tighter and smaller yet very powerful 
  thanks to the utilization of Javascript specific features, and a design approach that says: keep it simple, even if the requirements
  are real-world sophisticated. For example:
- 1. A simple application can easily use the group mechanism instead of using a single role definition;
+ 1. A simple application can easily use the group mechanism instead of using even a single role.
  1. The same mechanism can be used for simple DAC, too. 
  1. A complex application may easily override the default logic and add fine-grained, context sensitive logic
  only in the specific cases and entities it is needed (ABAC style).
- 1. It is possible to easily define permission inheritance.         
+ 1. You can easily define permission inheritance.         
 
 ## Install
 `npm i am-i-allowed`
@@ -65,7 +67,7 @@ you can have default permissions and specific roles for that kind of actors.
 In order to use am-i-allowed, you need
 1. Your actors (users, normally, but not necessarily exclusively) to adhere to IActor interface,
 which means, they must have a string-able `id` member and, if you want to use groups, a `groups` member (names/ids of groups)
-1. The entities you want to be accessed-managed, should adhere to the IPrivilegeManaged interface, which must also include a string-able `id`
+1. The entities you want to be access-managed, should adhere to the IPrivilegeManaged interface, which must also include a string-able `id`
 and *may* include a few other members, for less than basic features. 
 1. You need to have a persistent storage for the privilege manager, which must answer the IPermissionStore interface. A reference implementation
 is provided in the `MemoryPermissionStore` class.
@@ -91,7 +93,7 @@ no roles, groups, etc are set in the entity) then it will seek permission at tha
 1. You can override the normal permission-checking logic using `IPrivilegeManaged.customPermissionChecker`. You
 can easily add exclusions and inclusions there (you can access the `standardPermissionChecker` method from it)
 and, for example, use the specialContext in your new or additional logic (ABAC style).
-1. Not just model entities may be managed by the privilege manager, but also static objects, that may
+1. Even static, arbitrary objects may be managed, not only model entities. Such objects could be used to 
 represent virtual functional entities, such as "System Administration" and so on. If it is such an object,
 you can use ids such as "System", and make sure to add `__name` member to it (can also be "System").
 1. You can define specific roles for specific group members over an entity type. Simply add a role that
@@ -99,7 +101,7 @@ have the name `MemberOfMyGroup` where `MyGroup` is the name/id of the group.
 
 
 # Simple Example
-```
+```ts
 
 class Workshop implements IPrivilegeManaged {
     constructor(readonly id: string) {}
@@ -153,6 +155,9 @@ expect(await pm.isAllowed(shai, 'EditAnything', sysAdmin), true)
 
 // jeff doesn't have that permission
 expect(await pm.isAllowed(jeff, 'EditAnything', sysAdmin), false)
+
+expect( (await pm.getRolesForActor( jeff.id, workShop1 )).length ==1, true)
+
 
 function expect( result, expectation) {
     if (result != expectation)

@@ -69,6 +69,10 @@ export abstract class IPermissionStore {
     abstract saveRole(entityTypeName: string, role: Role): Promise<void>
 
     abstract deleteRole(roleName: string, entityTypeName: string)
+
+    abstract getRoleOwners(entity: IPrivilegeManaged): Promise< { [actorId: string]: string[] } >
+
+    abstract getActorRoles(actorId, skip: number, limit: number): Promise<{ [p: string]: string[] }>
 }
 
 export interface PMD {

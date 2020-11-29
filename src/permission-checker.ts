@@ -15,7 +15,7 @@ export const standardPermissionChecker: PermissionChecker = async (privilegeMana
 
     const operations = privilegeManager.operationTree.expandOperation(operation);
     const metaData = await privilegeManager.findMetaData(entity)
-    const entityRoles = await privilegeManager.getRolesForUserId(actor.id, entity)
+    const entityRoles = await privilegeManager.getRolesForActor(actor.id, entity)
     const isVisitor = !actor.id
     const isAUser = !isVisitor
     const commonGroups = actor?.groups.filter(g => entity.permissionGroupIds?.includes(g)) || []
