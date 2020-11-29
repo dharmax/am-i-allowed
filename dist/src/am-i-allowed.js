@@ -59,6 +59,22 @@ class PrivilegeManager {
         return permission_checker_1.standardPermissionChecker(this, ...arguments);
     }
     /**
+     * @return all the actors that have explicit roles assigned on that entity
+     * @param entity the entity
+     */
+    getRoleOwners(entity) {
+        return this.store.getRoleOwners(entity);
+    }
+    /**
+     * @return all the roles explicitly assigned to the actor on any entity
+     * @param actorId
+     * @param skip pagination support
+     * @param limit pagination support
+     */
+    getActorRoles(actorId, skip = 0, limit = 1000) {
+        return this.store.getActorRoles(actorId, skip, limit);
+    }
+    /**
      * assign a role to use in entity
      * @param entity the entity
      * @param actor either IActor or an id
@@ -67,7 +83,12 @@ class PrivilegeManager {
     assignRole(entity, actor, role) {
         return this.store.assignRole(entity.id, actor?.id || actor, role.roleName);
     }
-    async getRolesForUserId(id, entity) {
+    /**
+     * @Return the roles the actor have on an entity
+     * @param id
+     * @param entity
+     */
+    async getRolesForActor(id, entity) {
         return this.store.getRolesForUser(id, entity, await this.findMetaData(entity));
     }
     /**
