@@ -6,25 +6,25 @@ class MemoryPermissionStore {
         this.roleAssignmentDatabase = {};
         this.roleRegistry = {};
     }
-    async assignRole(entityId, actorId, roleName) {
-        entityId = entityId.toString();
-        actorId = actorId.toString();
+    async assignRole(_entity, _actor, roleName) {
+        const entityId = _entity.id.toString();
+        const actor = _actor.id.toString();
         let entityEntry = this.roleAssignmentDatabase[entityId];
         if (!entityEntry) {
-            entityEntry = { [actorId]: [roleName] };
+            entityEntry = { [actor]: [roleName] };
             this.roleAssignmentDatabase[entityId] = entityEntry;
             return;
         }
-        let actorRoles = entityEntry[actorId];
+        let actorRoles = entityEntry[actor];
         if (!actorRoles) {
-            entityEntry[actorId] = [roleName];
+            entityEntry[actor] = [roleName];
             return;
         }
         actorRoles.push(roleName);
     }
-    async getRolesForUser(actorId, entity, metadata) {
+    async getRolesForUser(_actor, entity, metadata) {
         const entityId = entity.id.toString();
-        actorId = actorId.toString();
+        const actorId = _actor.id.toString();
         let entry = this.roleAssignmentDatabase[entityId];
         if (!entry)
             return [];
@@ -33,9 +33,9 @@ class MemoryPermissionStore {
             return [];
         return roleNames.map(rName => metadata.roles[rName]);
     }
-    async removeRole(entity, actorId, roleName) {
+    async removeRole(entity, _actor, roleName) {
         const entityId = entity.id.toString();
-        actorId = actorId.toString();
+        const actorId = _actor.id.toString();
         let entry = this.roleAssignmentDatabase[entityId];
         if (!entry)
             return;
@@ -56,7 +56,8 @@ class MemoryPermissionStore {
     async getRoleOwners(entity) {
         return this.roleAssignmentDatabase[entity.id];
     }
-    async getActorRoles(actorId, skip, limit) {
+    async getActorRoles(_actor, skip, limit) {
+        const actorId = _actor.id.toString();
         const entries = {};
         let counter = 0;
         for (let [e, assignments] of Object.entries(this.roleAssignmentDatabase)) {

@@ -79,7 +79,7 @@ export class PrivilegeManager {
      * @param limit pagination support
      */
     getActorRoles(actorId, skip = 0, limit = 1000): Promise<{ [entityId: string]: string[] }> {
-        return this.store.getActorRoles(actorId, skip,limit)
+        return this.store.getActorRoles(actorId, skip, limit)
     }
 
 
@@ -89,17 +89,17 @@ export class PrivilegeManager {
      * @param actor either IActor or an id
      * @param role the role
      */
-    assignRole(entity: IPrivilegeManaged, actor: IActor | any, role: Role): Promise<void> {
-        return this.store.assignRole(entity.id, actor?.id || actor, role.roleName)
+    assignRole(entity: IPrivilegeManaged, actor: IActor, role: Role): Promise<void> {
+        return this.store.assignRole(entity, actor, role.roleName)
     }
 
     /**
      * @Return the roles the actor have on an entity
-     * @param id
+     * @param actor
      * @param entity
      */
-    async getRolesForActor(id: any, entity: IPrivilegeManaged): Promise<Role[]> {
-        return this.store.getRolesForUser(id, entity, await this.findMetaData(entity))
+    async getRolesForActor(actor: IActor, entity: IPrivilegeManaged): Promise<Role[]> {
+        return this.store.getRolesForUser(actor, entity, await this.findMetaData(entity))
     }
 
     /**

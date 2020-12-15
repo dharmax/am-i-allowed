@@ -60,11 +60,11 @@ export type Operation = string
  * You can use anything as the persistent storage for the permission system, as long as it is compatible with this interface
  */
 export abstract class IPermissionStore {
-    abstract assignRole(entityId: any, actorId: any, roleName: string): Promise<void>
+    abstract assignRole(entity: IPrivilegeManaged, actor: IActor, roleName: string): Promise<void>
 
-    abstract removeRole(entityId: any, actorId: any, roleName: string): Promise<void>
+    abstract removeRole(entity: IPrivilegeManaged, actor: IActor, roleName: string): Promise<void>
 
-    abstract getRolesForUser(actorId: any, entity: IPrivilegeManaged, metadata: PermissionsMetaData): Promise<Role[]>
+    abstract getRolesForUser(actor: IActor, entity: IPrivilegeManaged, metadata: PermissionsMetaData): Promise<Role[]>
 
     abstract saveRole(entityTypeName: string, role: Role): Promise<void>
 
@@ -72,7 +72,7 @@ export abstract class IPermissionStore {
 
     abstract getRoleOwners(entity: IPrivilegeManaged): Promise< { [actorId: string]: string[] } >
 
-    abstract getActorRoles(actorId, skip: number, limit: number): Promise<{ [p: string]: string[] }>
+    abstract getActorRoles(actor: IActor, skip: number, limit: number): Promise<{ [p: string]: string[] }>
 }
 
 export interface PMD {

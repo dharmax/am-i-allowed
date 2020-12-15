@@ -1,30 +1,30 @@
-import {IPermissionStore, IPrivilegeManaged, PermissionsMetaData} from "./types";
+import {IActor, IPermissionStore, IPrivilegeManaged, PermissionsMetaData} from "./types";
 import {Role} from "./am-i-allowed";
 
 export class MemoryPermissionStore implements IPermissionStore {
     private roleAssignmentDatabase: { [entityId: string]: { [actorId: string]: string[] } } = {}
     private roleRegistry = {};
 
-    async assignRole(entityId: any, actorId: any, roleName: string): Promise<void> {
-        entityId = entityId.toString()
-        actorId = actorId.toString()
+    async assignRole(_entity: IPrivilegeManaged, _actor: IActor, roleName: string): Promise<void> {
+        const entityId = _entity.id.toString()
+        const actor = _actor.id.toString()
         let entityEntry = this.roleAssignmentDatabase[entityId]
         if (!entityEntry) {
-            entityEntry = {[actorId]: [roleName]}
+            entityEntry = {[actor]: [roleName]}
             this.roleAssignmentDatabase[entityId] = entityEntry
             return
         }
-        let actorRoles = entityEntry[actorId]
+        let actorRoles = entityEntry[actor]
         if (!actorRoles) {
-            entityEntry[actorId] = [roleName]
+            entityEntry[actor] = [roleName]
             return
         }
         actorRoles.push(roleName)
     }
 
-    async getRolesForUser(actorId: any, entity: IPrivilegeManaged, metadata: PermissionsMetaData): Promise<Role[]> {
+    async getRolesForUser(_actor: IActor, entity: IPrivilegeManaged, metadata: PermissionsMetaData): Promise<Role[]> {
         const entityId = entity.id.toString()
-        actorId = actorId.toString()
+        const actorId = _actor.id.toString()
         let entry = this.roleAssignmentDatabase[entityId]
         if (!entry)
             return []
@@ -35,9 +35,9 @@ export class MemoryPermissionStore implements IPermissionStore {
         return roleNames.map(rName => metadata.roles[rName])
     }
 
-    async removeRole(entity: IPrivilegeManaged, actorId: any, roleName: string): Promise<void> {
+    async removeRole(entity: IPrivilegeManaged, _actor: IActor, roleName: string): Promise<void> {
         const entityId = entity.id.toString()
-        actorId = actorId.toString()
+        const actorId = _actor.id.toString()
         let entry = this.roleAssignmentDatabase[entityId]
         if (!entry)
             return
@@ -62,8 +62,9 @@ export class MemoryPermissionStore implements IPermissionStore {
         return this.roleAssignmentDatabase[entity.id]
     }
 
-    async getActorRoles(actorId, skip: number, limit: number): Promise<{ [p: string]: string[] }> {
+    async getActorRoles(_actor: IActor, skip: number, limit: number): Promise<{ [p: string]: string[] }> {
 
+        const actorId = _actor.id.toString()
         const entries: { [entityId: string]: string[] } = {}
         let counter = 0
         for (let [e, assignments] of Object.entries(this.roleAssignmentDatabase)) {

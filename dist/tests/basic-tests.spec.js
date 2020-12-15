@@ -66,8 +66,8 @@ describe('Testing am-i-allowed ', () => {
         chai_1.expect(await pm.isAllowed(jeff, 'Buy', workShop1)).to.be.true;
         chai_1.expect(await pm.isAllowed(customer, 'Order', workShop1)).to.be.true;
         chai_1.expect(await pm.isAllowed(customer, 'Order', morningWorkshop)).to.be.equal(isMorning());
-        chai_1.expect(await pm.getRolesForActor(jeff.id, workShop1)).to.be.lengthOf(1);
-        console.log(await pm.getRolesForActor(jeff.id, workShop1));
+        chai_1.expect(await pm.getRolesForActor(jeff, workShop1)).to.be.lengthOf(1);
+        console.log(await pm.getRolesForActor(jeff, workShop1));
     });
 });
 function isMorning() {

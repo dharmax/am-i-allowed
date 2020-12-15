@@ -81,15 +81,15 @@ class PrivilegeManager {
      * @param role the role
      */
     assignRole(entity, actor, role) {
-        return this.store.assignRole(entity.id, actor?.id || actor, role.roleName);
+        return this.store.assignRole(entity, actor, role.roleName);
     }
     /**
      * @Return the roles the actor have on an entity
-     * @param id
+     * @param actor
      * @param entity
      */
-    async getRolesForActor(id, entity) {
-        return this.store.getRolesForUser(id, entity, await this.findMetaData(entity));
+    async getRolesForActor(actor, entity) {
+        return this.store.getRolesForUser(actor, entity, await this.findMetaData(entity));
     }
     /**
      * Define a new role. Also add itself to the corresponding entityType
