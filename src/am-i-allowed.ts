@@ -131,7 +131,7 @@ export class PrivilegeManager {
 }
 
 
-class NoPrivilegeException extends Error {
+export class NoPrivilegeException extends Error {
     constructor(actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any) {
         super(`${actor.id} attempted unprivileged operation ${operation.toString()} on ${entity.id} with ${JSON.stringify(specialContext || '')}`)
     }

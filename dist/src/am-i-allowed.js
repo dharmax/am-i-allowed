@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.Role = exports.PrivilegeManager = void 0;
+exports.Role = exports.NoPrivilegeException = exports.PrivilegeManager = void 0;
 const types_1 = require("./types");
 const permission_checker_1 = require("./permission-checker");
 const operations_taxonomy_1 = require("./operations-taxonomy");
@@ -119,6 +119,7 @@ class NoPrivilegeException extends Error {
         super(`${actor.id} attempted unprivileged operation ${operation.toString()} on ${entity.id} with ${JSON.stringify(specialContext || '')}`);
     }
 }
+exports.NoPrivilegeException = NoPrivilegeException;
 ////////////////////////////////////////////
 /**
  * This class's purpose is to holds the operation definition tree and provide the expandOperation method
