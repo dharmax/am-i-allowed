@@ -6,7 +6,10 @@
  */
 export const DefaultOperationsTaxonomy = {
     Admin: {
-        AddAdmin: {},
+        AddAdmin: {
+            ChangePermissions: {
+            }
+        },
         DeleteDatabase: {
             ManageDatabase: {
                 ManageUsers: {

@@ -9,7 +9,9 @@ exports.DefaultOperationsTaxonomy = void 0;
  */
 exports.DefaultOperationsTaxonomy = {
     Admin: {
-        AddAdmin: {},
+        AddAdmin: {
+            ChangePermissions: {}
+        },
         DeleteDatabase: {
             ManageDatabase: {
                 ManageUsers: {
