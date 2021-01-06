@@ -34,10 +34,11 @@ class PrivilegeManager {
      * @param operation
      * @param entity
      * @param specialContext for custom logic
+     * @throws NoPrivilegeException if actor is not allowed
      */
     async test(actor, operation, entity, specialContext) {
         // @ts-ignore
-        const isAllowed = await checkPermissionSoft(...arguments);
+        const isAllowed = await this.isAllowed(...arguments);
         if (!isAllowed) { // @ts-ignore
             throw new NoPrivilegeException(...arguments);
         }
@@ -48,6 +49,7 @@ class PrivilegeManager {
      * @param operation
      * @param entity
      * @param specialContext
+     * @return <promise> of true or false
      */
     isAllowed(actor, operation, entity, specialContext) {
         if (!this.operationTree.find(operation))
