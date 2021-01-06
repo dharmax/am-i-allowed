@@ -180,10 +180,18 @@ class EntityMetaDataLookup {
         return metadata;
     }
     async findMetaData(entity) {
-        let permissionsMetaDataOnEntity = entity.permissionsMetaData;
-        permissionsMetaDataOnEntity = typeof permissionsMetaDataOnEntity == "function" ? await permissionsMetaDataOnEntity() : permissionsMetaDataOnEntity;
-        permissionsMetaDataOnEntity && (permissionsMetaDataOnEntity._validated ?? (permissionsMetaDataOnEntity._validated = this.validateMetaData(permissionsMetaDataOnEntity)));
-        return permissionsMetaDataOnEntity || this.getOrAddMetaData(entity.constructor == Object ? entity.___name : entity.constructor.name);
+        // first, we check if there's meta data on the entity itself
+        let metaData = entity.permissionsMetaData;
+        if (!metaData) {
+            const entityName = entity.constructor === Object ? entity.___name : entity.constructor.name;
+            return this.getOrAddMetaData(entityName);
+        }
+        // if it is defined as function - execute the function
+        metaData = typeof metaData === 'function' ? await metaData() : metaData;
+        // validate the metadata if it wasn't validated before
+        if (!metaData._validated)
+            metaData._validated = this.validateMetaData(metaData);
+        return metaData;
     }
     validateMetaData(md) {
         [...md.defaultGroupMemberPermissions, ...md.defaultUserPermissions, ...md.defaultVisitorPermissions].forEach(o => {

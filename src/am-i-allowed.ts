@@ -216,11 +216,21 @@ class EntityMetaDataLookup {
     }
 
     async findMetaData(entity: IPrivilegeManaged) {
-        let permissionsMetaDataOnEntity = entity.permissionsMetaData
-        permissionsMetaDataOnEntity = typeof permissionsMetaDataOnEntity == "function" ? await permissionsMetaDataOnEntity() : permissionsMetaDataOnEntity
-        permissionsMetaDataOnEntity && (permissionsMetaDataOnEntity._validated ??= this.validateMetaData(permissionsMetaDataOnEntity))
+        // first, we check if there's meta data on the entity itself
+        let metaData = entity.permissionsMetaData
+        if (!metaData) {
+            const entityName = entity.constructor === Object ? entity.___name : entity.constructor.name;
+            return this.getOrAddMetaData(entityName)
+        }
 
-        return permissionsMetaDataOnEntity || this.getOrAddMetaData(entity.constructor == Object ? entity.___name : entity.constructor.name)
+        // if it is defined as function - execute the function
+        metaData = typeof metaData === 'function' ? await metaData() : metaData
+
+        // validate the metadata if it wasn't validated before
+        if (!metaData._validated)
+            metaData._validated = this.validateMetaData(metaData)
+
+        return metaData
     }
 
     private validateMetaData(md: PermissionsMetaData) {
