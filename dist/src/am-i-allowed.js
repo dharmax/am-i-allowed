@@ -186,7 +186,7 @@ class EntityMetaDataLookup {
     validateMetaData(md) {
         [...md.defaultGroupMemberPermissions, ...md.defaultUserPermissions, ...md.defaultVisitorPermissions].forEach(o => {
             if (!this.privilegeManager.operationTree.find(o))
-                throw new Error('Operation "${o}" is not in the taxonomy');
+                throw new Error(`Operation "${o}" is not in the taxonomy`);
         });
         return true;
     }
