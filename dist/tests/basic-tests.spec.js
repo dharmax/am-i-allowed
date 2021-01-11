@@ -19,7 +19,7 @@ class SpecialWorkshop extends Workshop {
 }
 SpecialWorkshop.customPermissionChecker = async (privilegeManager, actor, operation, entity, specialContext) => {
     // @ts-ignore
-    const normalResponse = await src_1.standardPermissionChecker(...arguments);
+    const normalResponse = await src_1.standardPermissionChecker(privilegeManager, actor, operation, entity, specialContext);
     // no point to check further
     if (!normalResponse)
         return false;
@@ -70,8 +70,8 @@ describe('Testing am-i-allowed ', () => {
         console.log(await pm.getRolesForActor(jeff, workShop1));
     });
 });
-function isMorning() {
-    const hour = (new Date()).getHours();
+function isMorning(time) {
+    const hour = (time || new Date()).getHours();
     return hour < 12 && hour > 6;
 }
 //# sourceMappingURL=basic-tests.spec.js.map

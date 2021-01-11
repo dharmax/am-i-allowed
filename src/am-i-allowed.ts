@@ -59,9 +59,10 @@ export class PrivilegeManager {
         if (!this.operationTree.find(operation))
             throw new Error(`Operation ${operation.toString()} is not defined. Consider adding it to the operations tree.`)
 
-        if (entity.customPermissionChecker)
-            // @ts-ignore
-            return entity.customPermissionChecker(this, ...arguments)
+        // @ts-ignore
+        const customPermissionChecker = entity.customPermissionChecker || entity.constructor?.customPermissionChecker;
+        if (customPermissionChecker)
+            return customPermissionChecker(this, ...arguments)
         // @ts-ignore
         return standardPermissionChecker(this, ...arguments)
     }
@@ -104,14 +105,32 @@ export class PrivilegeManager {
         return this.store.getRolesForUser(actor, entity, await this.findMetaData(entity))
     }
 
+    // noinspection JSIgnoredPromiseFromCall
     /**
-     * Define a new role. Also add itself to the corresponding entityType
+     * Define a new role. Also add itself to the corresponding entityType. Y
+     * @param roleName name of role
+     * @param entityType The entity types this role is applicable to
+     * @param operations the operation the role holder may do on the entities of the aforementioned types
+     * @return the new role object
+     */
+    addRole(roleName: string, operations: Operation[], entityType: (string | Function)): Role {
+        const role = new Role(this, roleName, operations, entityType)
+        const metaData = this.getOrAddMetaData(entityType);
+        metaData.roles[roleName] = role
+        this.store.saveRole(metaData.name, role).then(()=>{})
+        return role
+    }
+
+    /**
+     * Define a new role. Also add itself to the corresponding entityType. You can add multiple roles, each for
+     * different entity type if you provide more than one entity type.
      * @param roleName name of role
      * @param entityTypes The entity types this role is applicable to
      * @param operations the operation the role holder may do on the entities of the aforementioned types
+     * @return the new roles objects
      */
-    addRole(roleName: string, operations: Operation[], ...entityTypes: (string | Function)[]): Role {
-        return new Role(this, roleName, operations, ...entityTypes)
+    addRoles(roleName: string, operations: Operation[], ...entityTypes: (string | Function)[]): Role[] {
+        return  entityTypes.map(entityType => this.addRole( roleName, operations, entityType ))
     }
 
     deleteRole(roleName: string, entityTypeName: string): Promise<void> {
@@ -217,7 +236,8 @@ class EntityMetaDataLookup {
 
     async findMetaData(entity: IPrivilegeManaged) {
         // first, we check if there's meta data on the entity itself
-        let metaData = entity.permissionsMetaData
+        // @ts-ignore
+        let metaData = entity.permissionsMetaData || entity.constructor?.permissionsMetaData
         if (!metaData) {
             const entityName = entity.constructor === Object ? entity.___name : entity.constructor.name;
             return this.getOrAddMetaData(entityName)
@@ -250,14 +270,9 @@ export class Role {
 
     readonly operations: Set<Operation>
 
-
-    constructor(pm: PrivilegeManager, readonly roleName: string, operations: string[], ...entityTypes: (string | Function)[]) {
+    constructor(pm: PrivilegeManager, readonly roleName: string, operations: string[], readonly entityType: (string | Function)) {
         this.operations = new Set<Operation>(operations);
-        [...entityTypes].forEach(type => {
-            const metaData = pm.getOrAddMetaData(type);
-            metaData.roles[this.roleName] = this
-            pm.saveRole(metaData.name, this)
-        })
+
 
     }
 }

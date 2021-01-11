@@ -28,7 +28,7 @@ class SpecialWorkshop extends Workshop {
     }
     static customPermissionChecker = async (privilegeManager: PrivilegeManager, actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<boolean> =>{
         // @ts-ignore
-        const normalResponse = await standardPermissionChecker(...arguments)
+        const normalResponse = await standardPermissionChecker(privilegeManager, actor, operation, entity, specialContext)
         // no point to check further
         if ( !normalResponse)
             return false
@@ -102,7 +102,7 @@ describe('Testing am-i-allowed ', () => {
     })
 })
 
-function isMorning() {
-    const hour = (new Date()).getHours()
+function isMorning(time?:Date) {
+    const hour = (time || new Date()).getHours()
     return hour < 12  && hour > 6
 }
