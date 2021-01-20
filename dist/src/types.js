@@ -16,10 +16,10 @@ class PermissionsMetaData {
         // internally populated in the role definition process
         this.roles = {};
         this.parentNames = parentNames;
-        this.defaultVisitorPermissions = defaultVisitorPermissions;
-        this.defaultUserPermissions = defaultUserPermissions;
+        this.defaultVisitorPermissions = new Set([...defaultVisitorPermissions]);
+        this.defaultUserPermissions = new Set([...defaultUserPermissions]);
         this.groupMembershipMandatory = groupMembershipMandatory;
-        this.defaultGroupMemberPermissions = defaultGroupMemberPermissions;
+        this.defaultGroupMemberPermissions = new Set([...defaultGroupMemberPermissions]);
     }
 }
 exports.PermissionsMetaData = PermissionsMetaData;

@@ -77,9 +77,9 @@ export abstract class IPermissionStore {
 
 export interface PMD {
     parentNames?: string[]
-    defaultVisitorPermissions?: Set<Operation>
-    defaultUserPermissions?: Set<Operation>
-    defaultGroupMemberPermissions?: Set<Operation>
+    defaultVisitorPermissions?: Set<Operation> | Operation[]
+    defaultUserPermissions?: Set<Operation> | Operation[]
+    defaultGroupMemberPermissions?: Set<Operation> | Operation[]
     groupMembershipMandatory?: boolean
 }
 
@@ -100,10 +100,10 @@ export class PermissionsMetaData implements PMD {
         groupMembershipMandatory = false
     }: PMD) {
         this.parentNames = parentNames
-        this.defaultVisitorPermissions = defaultVisitorPermissions
-        this.defaultUserPermissions = defaultUserPermissions
+        this.defaultVisitorPermissions = new Set( [...defaultVisitorPermissions])
+        this.defaultUserPermissions = new Set( [...defaultUserPermissions])
         this.groupMembershipMandatory = groupMembershipMandatory
-        this.defaultGroupMemberPermissions = defaultGroupMemberPermissions
+        this.defaultGroupMemberPermissions =  new Set([... defaultGroupMemberPermissions])
     }
 
     defaultVisitorPermissions: Set<string>

@@ -1,6 +1,6 @@
 {
   "name": "am-i-allowed",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "A generic, very powerful yet very friendly, 0 dependencies, agnostic, permissions/access-control/authorization library",
   "main": "dist/src/index.js",
   "types": "src/index.ts",
