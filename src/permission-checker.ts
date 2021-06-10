@@ -1,6 +1,7 @@
 import {GROUP_ROLE_PREFIX, IActor, IPrivilegeManaged, Operation, PermissionChecker} from "./types";
 import {PrivilegeManager} from "./am-i-allowed";
 
+
 /**
  * This is the standardPermissionChecker logic. First, explicit role assignments are checked, then group related, which means,
  * if user and entity groups intersect, then either the default group permissions are used or the entities GroupMember role is used,
@@ -18,7 +19,10 @@ export const standardPermissionChecker: PermissionChecker = async (privilegeMana
     const entityRoles = await privilegeManager.getRolesForActor(actor, entity)
     const isVisitor = !actor.id
     const isAUser = !isVisitor
-    const commonGroups = actor?.groups.filter(g => entity.permissionGroupIds?.includes(g)) || []
+    const actorGroups = await getGroups(actor?.groups)
+    const entityGroups = await getGroups(entity.permissionGroupIds)
+    const commonGroups = actorGroups.filter(g => entityGroups.includes(g)) || []
+    // const commonGroups = actor?.groups.filter(g => entity.permissionGroupIds?.includes(g)) || []
     const isGroupMember = commonGroups?.length > 0
 
     if (!metaData.groupMembershipMandatory || isGroupMember)
@@ -59,5 +63,23 @@ export const standardPermissionChecker: PermissionChecker = async (privilegeMana
 
     }
 
+}
 
+export type GroupList = string[]
+export type GroupSpecifier = string | (() => string) | GroupList | (() => Promise<GroupList>)
+
+async function getGroups(groups: GroupSpecifier): Promise<GroupList> {
+    let g: any = groups
+    if (typeof groups === 'function') {
+        g = groups()
+        if (g.then)
+            g = await g
+    }
+    if (!g)
+        return []
+
+    if (typeof g == 'string')
+        return [g]
+
+    return g
 }

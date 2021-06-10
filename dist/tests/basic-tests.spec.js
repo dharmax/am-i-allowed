@@ -1,6 +1,5 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-const mocha_1 = require("mocha");
 const src_1 = require("../src");
 const chai_1 = require("chai");
 class Workshop {
@@ -30,8 +29,8 @@ SpecialWorkshop.customPermissionChecker = async (privilegeManager, actor, operat
 };
 describe('Testing am-i-allowed ', () => {
     const myUsers = {
-        Jeff: { id: '1', groups: ['workers'] },
-        Shay: { id: '2', groups: ['admin'] },
+        Jeff: { id: '1', groups: 'workers' },
+        Shay: { id: '2', groups: 'admin' },
         customer1: { id: '3', groups: ['customers'] }
     };
     const myEntities = {
@@ -40,7 +39,7 @@ describe('Testing am-i-allowed ', () => {
         sysAdmin: {
             ___name: 'System',
             id: 'System',
-            permissionGroupIds: ['admin'],
+            permissionGroupIds: 'admin',
             permissionsMetaData: new src_1.PermissionsMetaData('System', {
                 defaultGroupMemberPermissions: new Set(['Admin'])
             })
@@ -48,8 +47,6 @@ describe('Testing am-i-allowed ', () => {
     };
     let pm = new src_1.PrivilegeManager(new src_1.MemoryPermissionStore());
     const RoleSalesPerson = pm.addRole('Seller', ['ReadDeep', 'Sell'], Workshop);
-    mocha_1.before(() => {
-    });
     it('should be able to assign role', async () => {
         const workShop1 = myEntities['Workshop'];
         const morningWorkshop = myEntities['MorningWorkshop'];

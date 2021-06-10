@@ -46,8 +46,8 @@ class SpecialWorkshop extends Workshop {
 describe('Testing am-i-allowed ', () => {
 
     const myUsers: { [name: string]: IActor } = {
-        Jeff: {id: '1', groups: ['workers']},
-        Shay: {id: '2', groups: ['admin']},
+        Jeff: {id: '1', groups: 'workers'},
+        Shay: {id: '2', groups: 'admin'},
         customer1: {id:'3',  groups:['customers']}
     }
     const myEntities: { [name: string]: IPrivilegeManaged } = {
@@ -56,7 +56,7 @@ describe('Testing am-i-allowed ', () => {
         sysAdmin: {
             ___name: 'System',
             id: 'System',
-            permissionGroupIds: ['admin'],
+            permissionGroupIds: 'admin',
             permissionsMetaData: new PermissionsMetaData('System', {
                 defaultGroupMemberPermissions: new Set<Operation>(['Admin'])
             })
@@ -68,9 +68,6 @@ describe('Testing am-i-allowed ', () => {
 
     const RoleSalesPerson = pm.addRole('Seller', ['ReadDeep', 'Sell'], Workshop)
 
-
-    before(() => {
-    })
 
 
     it('should be able to assign role', async () => {

@@ -1,11 +1,12 @@
 import {PrivilegeManager, Role} from "./am-i-allowed";
+import {GroupSpecifier} from "./permission-checker";
 
 /**
  * Represents someone who acts on something; it could be a logged in user, or a non logged in user
  */
 export interface IActor {
     id
-    groups: string[] // permission group ids
+    groups: GroupSpecifier // permission group ids
 }
 
 /**
@@ -34,7 +35,7 @@ export interface IPrivilegeManaged {
     /**
      * list of groups of the instance
      */
-    permissionGroupIds?: string[]
+    permissionGroupIds?: GroupSpecifier
     /**
      * Optional custom permission logic
      */
