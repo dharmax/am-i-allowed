@@ -22,7 +22,6 @@ export const standardPermissionChecker: PermissionChecker = async (privilegeMana
     const actorGroups = await getGroups(actor?.groups)
     const entityGroups = await getGroups(entity.permissionGroupIds)
     const commonGroups = actorGroups.filter(g => entityGroups.includes(g)) || []
-    // const commonGroups = actor?.groups.filter(g => entity.permissionGroupIds?.includes(g)) || []
     const isGroupMember = commonGroups?.length > 0
 
     if (!metaData.groupMembershipMandatory || isGroupMember)
@@ -42,7 +41,11 @@ export const standardPermissionChecker: PermissionChecker = async (privilegeMana
 
         for (let group of commonGroups) {
             const groupMemberRole = metaData.roles[GROUP_ROLE_PREFIX + group]
-            if (groupMemberRole && groupMemberRole.operations.has(op))
+            if (groupMemberRole?.operations.has(op))
+                return true
+        }
+        for (let group of actorGroups) {
+            if (metaData.groupPermissions[group]?.has(op))
                 return true
         }
 

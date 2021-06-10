@@ -234,7 +234,7 @@ class EntityMetaDataLookup {
         return metadata
     }
 
-    async findMetaData(entity: IPrivilegeManaged) {
+    async findMetaData(entity: IPrivilegeManaged):Promise<PermissionsMetaData> {
         // first, we check if there's meta data on the entity itself
         // @ts-ignore
         let metaData = entity.permissionsMetaData || entity.constructor?.permissionsMetaData

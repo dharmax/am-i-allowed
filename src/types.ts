@@ -71,7 +71,7 @@ export abstract class IPermissionStore {
 
     abstract deleteRole(roleName: string, entityTypeName: string)
 
-    abstract getRoleOwners(entity: IPrivilegeManaged): Promise< { [actorId: string]: string[] } >
+    abstract getRoleOwners(entity: IPrivilegeManaged): Promise<{ [actorId: string]: string[] }>
 
     abstract getActorRoles(actor: IActor, skip: number, limit: number): Promise<{ [p: string]: string[] }>
 }
@@ -82,6 +82,8 @@ export interface PMD {
     defaultUserPermissions?: Set<Operation> | Operation[]
     defaultGroupMemberPermissions?: Set<Operation> | Operation[]
     groupMembershipMandatory?: boolean
+    groupPermissions?: { [group: string]: (Operation[] | Set<Operation> | Operation) }
+
 }
 
 /**
@@ -98,20 +100,32 @@ export class PermissionsMetaData implements PMD {
         parentNames = [],
         defaultUserPermissions = new Set(),
         defaultGroupMemberPermissions = new Set(),
-        groupMembershipMandatory = false
+        groupMembershipMandatory = false,
+        groupPermissions = {}
     }: PMD) {
         this.parentNames = parentNames
-        this.defaultVisitorPermissions = new Set( [...defaultVisitorPermissions])
-        this.defaultUserPermissions = new Set( [...defaultUserPermissions])
+        this.defaultVisitorPermissions = toSet(defaultVisitorPermissions)
+        this.defaultUserPermissions = toSet(defaultUserPermissions)
         this.groupMembershipMandatory = groupMembershipMandatory
-        this.defaultGroupMemberPermissions =  new Set([... defaultGroupMemberPermissions])
+        this.defaultGroupMemberPermissions = toSet(defaultGroupMemberPermissions)
+        this.groupPermissions = {}
+        Object.entries(groupPermissions).forEach(e => this.groupPermissions[e[0]] = toSet(e[1]))
     }
 
     defaultVisitorPermissions: Set<string>
     defaultUserPermissions: Set<string>
     defaultGroupMemberPermissions: Set<string>
     groupMembershipMandatory: boolean
+    groupPermissions: { [group: string]: Set<Operation> }
     parentNames: string[];
 }
 
 export const GROUP_ROLE_PREFIX = 'MemberOf';
+
+function toSet<T>(v: T | T[] | Set<T>): Set<T> {
+    if (v.constructor.name == 'Set')
+        return v as Set<T>
+    if (Array.isArray(v))
+        return new Set(v)
+    return new Set([v]) as Set<T>
+}
