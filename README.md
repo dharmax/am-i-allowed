@@ -27,6 +27,52 @@ would be in the source.
 * The above feature set provides a practical support for either RBAC, ABAC, DAC and MAC.
 * It is easy to write a fontend for it, for role assignment and definition, etc., as well as to wrap it as a micro
 service and externalize its elegant API. 
+
+## Additonal support
+
+`MongoPermissionStore`: A permission store that interacts with MongoDB, batteries included
+
+Usage
+```js
+// https://mongoosejs.com/docs/models.html
+// for multiconnection models, use connection.model
+const userSchema = {
+    info: {
+        // Type object
+        permissions: {
+            type: Object,
+            default: {}
+        },
+        groups: []
+    }
+}
+const User = mongoose.model(`User`, userSchema);
+
+const toIActor = MongoPermissionStore.ToIActor("groups");
+userSchema.methods.getIActor = function () {
+    return toIActor(this);
+}
+
+// The permissions should be stored in Array type in the schema
+// if your schema looks like the above, the path should be info.permissions
+const path = "info.permissions";
+const store = new MongoPermissionStore(User, path);
+// This will be populated like such
+
+= {
+    info: {
+        permissions: {
+            "database": ["ReadDeep"],
+            "usermanage": [""]
+        }
+    },
+    groups: ["Admin"]
+}
+
+// Usage
+const user = User.findOneById(...);
+await pm.isAllowed(user.getIActor(), 'ReadDeep', database);
+```
  
  ### Advantages over existing solutions
  There are other (very good) libraries that do similar things. This one, however, is tighter and smaller yet very powerful 

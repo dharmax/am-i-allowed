@@ -1,5 +1,12 @@
 # Created by .ignore support plugin (hsz.mobi)
 
+# editor files
+.vscode
+.idea
+
+# build files
+dist
+
 .idea/
 ### Node template
 # Logs
