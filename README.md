@@ -16,6 +16,9 @@ anything but the JavaScript language.
 It is a rather well documented, small TypeScript code, so for now most of the documentation
 would be in the source.  
 
+## Contributor Guide
+See [AGENTS.md](./AGENTS.md) for contributor workflow, coding standards, and testing expectations.
+
 ## Features
 * Role-based
 * Permission groups
@@ -238,4 +241,3 @@ function isMorning(time?: Date) {
 ## License
  
 [ISC](https://opensource.org/licenses/ISC) 
-
