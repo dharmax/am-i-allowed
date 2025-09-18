@@ -1,4 +1,4 @@
-import {IActor, IPermissionStore, IPrivilegeManaged, PermissionsMetaData} from "./types";
+import {IActor, Identifier, IPermissionStore, IPrivilegeManaged, PermissionsMetaData} from "./types";
 import {Role} from "./am-i-allowed";
 
 export class MemoryPermissionStore implements IPermissionStore {
@@ -59,23 +59,32 @@ export class MemoryPermissionStore implements IPermissionStore {
     }
 
     async getRoleOwners(entity: IPrivilegeManaged): Promise<{ [actorId: string]: string[] }> {
-        return this.roleAssignmentDatabase[entity.id]
+        return this.roleAssignmentDatabase[entity.id.toString()] || {}
     }
 
-    async getActorRoles(_actor: IActor, skip: number, limit: number): Promise<{ [p: string]: string[] }> {
+    async getActorRoles(actorId: Identifier, skip: number, limit: number): Promise<{ [p: string]: string[] }> {
 
-        const actorId = _actor.id.toString()
+        const actorKey = actorId.toString()
         const entries: { [entityId: string]: string[] } = {}
-        let counter = 0
-        for (let [e, assignments] of Object.entries(this.roleAssignmentDatabase)) {
-            if (counter < skip)
+        let skipped = 0
+        let collected = 0
+        if (limit <= 0)
+            return entries
+
+        for (let [entityId, assignments] of Object.entries(this.roleAssignmentDatabase)) {
+            const actorAssignments = assignments[actorKey]
+            if (!actorAssignments)
                 continue
-            if (counter >= limit)
-                break
-            const actorAssignments = assignments[actorId];
-            if (actorAssignments) {
-                entries[e] = actorAssignments
+
+            if (skipped < skip) {
+                skipped++
+                continue
             }
+
+            entries[entityId] = actorAssignments
+            collected++
+            if (collected >= limit)
+                break
         }
         return entries
     }

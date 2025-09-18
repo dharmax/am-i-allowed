@@ -1,4 +1,4 @@
-import {GROUP_ROLE_PREFIX, IActor, IPrivilegeManaged, Operation, PermissionChecker} from "./types";
+import {GROUP_ROLE_PREFIX, GroupSpecifier, IActor, IPrivilegeManaged, Operation, PermissionChecker} from "./types";
 import {PrivilegeManager} from "./am-i-allowed";
 
 
@@ -17,6 +17,7 @@ export const standardPermissionChecker: PermissionChecker = async (privilegeMana
     const operations = privilegeManager.operationTree.expandOperation(operation);
     const metaData = await privilegeManager.findMetaData(entity)
     const entityRoles = await privilegeManager.getRolesForActor(actor, entity)
+    const rolesByName = new Map(entityRoles.map(role => [role.roleName, role]))
     const isVisitor = !actor.id
     const isAUser = !isVisitor
     const actorGroups = await getGroups(actor?.groups)
@@ -50,15 +51,15 @@ export const standardPermissionChecker: PermissionChecker = async (privilegeMana
         }
 
         if (isGroupMember)
-            if (metaData.defaultGroupMemberPermissions.has(op) || entityRoles['GroupMember']?.operations.has(op))
+            if (metaData.defaultGroupMemberPermissions.has(op) || rolesByName.get('GroupMember')?.operations.has(op) || metaData.roles['GroupMember']?.operations.has(op))
                 return true
 
         if (isAUser)
-            if (metaData.defaultUserPermissions.has(op) || entityRoles['User']?.operations.has(op))
+            if (metaData.defaultUserPermissions.has(op) || rolesByName.get('User')?.operations.has(op) || metaData.roles['User']?.operations.has(op))
                 return true
 
         if (isVisitor) {
-            if (metaData.defaultVisitorPermissions.has(op) || entityRoles['Visitor']?.operations.has(op))
+            if (metaData.defaultVisitorPermissions.has(op) || rolesByName.get('Visitor')?.operations.has(op) || metaData.roles['Visitor']?.operations.has(op))
                 return true
         }
 
@@ -69,20 +70,25 @@ export const standardPermissionChecker: PermissionChecker = async (privilegeMana
 }
 
 export type GroupList = string[]
-export type GroupSpecifier = string | (() => string) | GroupList | (() => Promise<GroupList>)
 
-async function getGroups(groups: GroupSpecifier): Promise<GroupList> {
-    let g: any = groups
-    if (typeof groups === 'function') {
-        g = groups()
-        if (g.then)
-            g = await g
-    }
-    if (!g)
+async function getGroups(groups?: GroupSpecifier): Promise<GroupList> {
+    if (!groups)
         return []
 
-    if (typeof g == 'string')
-        return [g]
+    let resolved: string | string[] | undefined
 
-    return g
+    if (typeof groups === 'function') {
+        const result = groups()
+        resolved = await Promise.resolve(result)
+    } else {
+        resolved = groups
+    }
+
+    if (!resolved)
+        return []
+
+    if (Array.isArray(resolved))
+        return resolved.filter(Boolean)
+
+    return [resolved]
 }

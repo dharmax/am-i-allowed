@@ -17,3 +17,4 @@ Write commits in the repository’s terse style, preferring lowercase imperative
 
 ## Agent-Specific Notes
 When exploring the codebase, avoid mutating `dist/` directly—always regenerate via the build. Validate TypeScript typing before shipping changes, and document non-obvious flows with short comments inline rather than expanding this guide.
+Consult `PERSISTENCE.md` when you need to extend or replace the in-memory permission store.

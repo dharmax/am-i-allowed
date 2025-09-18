@@ -1,12 +1,15 @@
 import {PrivilegeManager, Role} from "./am-i-allowed";
-import {GroupSpecifier} from "./permission-checker";
+
+export type Identifier = string | number;
+export type GroupValue = string | string[];
+export type GroupSpecifier = GroupValue | (() => GroupValue | Promise<GroupValue>);
 
 /**
  * Represents someone who acts on something; it could be a logged in user, or a non logged in user
  */
 export interface IActor {
-    id
-    groups: GroupSpecifier // permission group ids
+    id: Identifier;
+    groups?: GroupSpecifier; // permission group ids
 }
 
 /**
@@ -26,7 +29,7 @@ export interface IPrivilegeManaged {
     /**
      * A required identifier
      */
-    id
+    id: Identifier;
 
     /**
      * Should be used in simple JSON entities
@@ -43,13 +46,13 @@ export interface IPrivilegeManaged {
     /**
      * If meta data is not provided, default one is automatically created. It must be a static member.
      * */
-    permissionsMetaData?: PermissionsMetaData | (() => Promise<PermissionsMetaData>)
+    permissionsMetaData?: PermissionsMetaData | (() => PermissionsMetaData | Promise<PermissionsMetaData>)
 
     /**
      *optionally, you can point to another object to inherit its permissions. It's good for tree like structures, when
      * you inherit the parent's node's permissions by default.
      * */
-    permissionSuper?: () => Promise<IPrivilegeManaged>
+    permissionSuper?: () => IPrivilegeManaged | Promise<IPrivilegeManaged>
 }
 
 /**
@@ -73,7 +76,7 @@ export abstract class IPermissionStore {
 
     abstract getRoleOwners(entity: IPrivilegeManaged): Promise<{ [actorId: string]: string[] }>
 
-    abstract getActorRoles(actor: IActor, skip: number, limit: number): Promise<{ [p: string]: string[] }>
+    abstract getActorRoles(actorId: Identifier, skip: number, limit: number): Promise<{ [p: string]: string[] }>
 }
 
 export interface PMD {
@@ -96,10 +99,10 @@ export class PermissionsMetaData implements PMD {
     _validated: boolean; // internal
 
     constructor(readonly name: string, {
-        defaultVisitorPermissions = new Set(),
+        defaultVisitorPermissions = new Set<Operation>(),
         parentNames = [],
-        defaultUserPermissions = new Set(),
-        defaultGroupMemberPermissions = new Set(),
+        defaultUserPermissions = new Set<Operation>(),
+        defaultGroupMemberPermissions = new Set<Operation>(),
         groupMembershipMandatory = false,
         groupPermissions = {}
     }: PMD) {
@@ -123,9 +126,9 @@ export class PermissionsMetaData implements PMD {
 export const GROUP_ROLE_PREFIX = 'MemberOf';
 
 function toSet<T>(v: T | T[] | Set<T>): Set<T> {
-    if (v.constructor.name == 'Set')
-        return v as Set<T>
+    if (v instanceof Set)
+        return v
     if (Array.isArray(v))
         return new Set(v)
-    return new Set([v]) as Set<T>
+    return new Set([v])
 }

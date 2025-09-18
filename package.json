@@ -1,17 +1,23 @@
 {
   "name": "am-i-allowed",
-  "version": "1.3.0",
+  "version": "1.3.1",
   "description": "A generic, very powerful yet very friendly, 0 dependencies, agnostic, permissions/access-control/authorization library",
   "main": "dist/src/index.js",
-  "types": "src/index.ts",
+  "types": "dist/src/index.d.ts",
+  "files": [
+    "dist/**/*",
+    "README.md",
+    "PERSISTENCE.md"
+  ],
   "repository": {
     "type": "git",
     "url": "git+https://github.com/dharmax/am-i-allowed.git"
   },
   "scripts": {
-    "prepublish": "npx tsc",
+    "build": "npx tsc",
     "test": "mocha -require ts-node/register/transpile-only tests/*spec.ts",
-    "build": "npx tsc"
+    "prepare": "npm run build",
+    "prepublishOnly": "npm run build"
   },
   "keywords": ["permissions", "authorization", "privileges", "roles", "access control", "rbac", "abac", "acl", "dac",
     "mac"],

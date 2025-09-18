@@ -45,6 +45,11 @@ build/Release
 node_modules/
 jspm_packages/
 
+# Build artifacts
+dist/
+src/**/*.js
+src/**/*.js.map
+
 # Snowpack dependency directory (https://snowpack.dev/)
 web_modules/
 
@@ -117,4 +122,3 @@ out
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.*
-

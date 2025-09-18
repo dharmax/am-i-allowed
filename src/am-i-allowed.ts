@@ -1,6 +1,12 @@
-import {IActor, IPermissionStore, IPrivilegeManaged, Operation, PermissionsMetaData} from "./types";
+import {IActor, Identifier, IPermissionStore, IPrivilegeManaged, Operation, PermissionChecker, PermissionsMetaData} from "./types";
 import {standardPermissionChecker} from "./permission-checker";
 import {DefaultOperationsTaxonomy} from "./operations-taxonomy";
+
+type PermissionAwareConstructor = Function & {
+    customPermissionChecker?: PermissionChecker;
+    permissionsMetaData?: PermissionsMetaData | (() => PermissionsMetaData | Promise<PermissionsMetaData>);
+    name?: string;
+};
 
 /**
  * This is the main class. Normally you'd need just one PrivilegeManager for the whole application.
@@ -38,11 +44,10 @@ export class PrivilegeManager {
      * @param specialContext for custom logic
      * @throws NoPrivilegeException if actor is not allowed
      */
-    async test(actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<void> {
-        // @ts-ignore
-        const isAllowed = await this.isAllowed(...arguments)
-        if (!isAllowed) { // @ts-ignore
-            throw new NoPrivilegeException(...arguments)
+    async test(actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: unknown): Promise<void> {
+        const isAllowed = await this.isAllowed(actor, operation, entity, specialContext)
+        if (!isAllowed) {
+            throw new NoPrivilegeException(actor, operation, entity, specialContext)
         }
     }
 
@@ -54,17 +59,17 @@ export class PrivilegeManager {
      * @param specialContext
      * @return <promise> of true or false
      */
-    isAllowed(actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: any): Promise<boolean> {
+    isAllowed(actor: IActor, operation: Operation, entity: IPrivilegeManaged, specialContext?: unknown): Promise<boolean> {
 
         if (!this.operationTree.find(operation))
             throw new Error(`Operation ${operation.toString()} is not defined. Consider adding it to the operations tree.`)
 
-        // @ts-ignore
-        const customPermissionChecker = entity.customPermissionChecker || entity.constructor?.customPermissionChecker;
+        const entityCtor = entity.constructor as PermissionAwareConstructor | undefined
+        const customPermissionChecker = entity.customPermissionChecker || entityCtor?.customPermissionChecker;
         if (customPermissionChecker)
-            return customPermissionChecker(this, ...arguments)
-        // @ts-ignore
-        return standardPermissionChecker(this, ...arguments)
+            return customPermissionChecker(this, actor, operation, entity, specialContext)
+
+        return standardPermissionChecker(this, actor, operation, entity, specialContext)
     }
 
     /**
@@ -81,7 +86,7 @@ export class PrivilegeManager {
      * @param skip pagination support
      * @param limit pagination support
      */
-    getActorRoles(actorId, skip = 0, limit = 1000): Promise<{ [entityId: string]: string[] }> {
+    getActorRoles(actorId: Identifier, skip = 0, limit = 1000): Promise<{ [entityId: string]: string[] }> {
         return this.store.getActorRoles(actorId, skip, limit)
     }
 
@@ -117,7 +122,7 @@ export class PrivilegeManager {
         const role = new Role(this, roleName, operations, entityType)
         const metaData = this.getOrAddMetaData(entityType);
         metaData.roles[roleName] = role
-        this.store.saveRole(metaData.name, role).then(()=>{})
+        void this.store.saveRole(metaData.name, role)
         return role
     }
 
@@ -197,14 +202,11 @@ class OperationTree {
 
         if (!operation)
             return []
-        const parents = this.parentsMap.get(operation)
-        if (parents.length)
-            return [operation, ...parents]
-        return [operation, ...parents,
-            ...parents.reduce((a, c) => {
-                a.push(...this.expandOperation(c))
-                return a
-            }, [])]
+        const parents = this.parentsMap.get(operation) ?? []
+        if (!parents.length)
+            return [operation]
+        const expandedParents = parents.flatMap(parent => this.expandOperation(parent))
+        return [operation, ...new Set([...parents, ...expandedParents])]
     }
 
     find(operation: Operation): boolean {
@@ -234,17 +236,20 @@ class EntityMetaDataLookup {
         return metadata
     }
 
-    async findMetaData(entity: IPrivilegeManaged):Promise<PermissionsMetaData> {
+    async findMetaData(entity: IPrivilegeManaged): Promise<PermissionsMetaData> {
         // first, we check if there's meta data on the entity itself
-        // @ts-ignore
-        let metaData = entity.permissionsMetaData || entity.constructor?.permissionsMetaData
+        const entityCtor = entity.constructor as PermissionAwareConstructor | undefined
+        let metaData = entity.permissionsMetaData || entityCtor?.permissionsMetaData
         if (!metaData) {
-            const entityName = entity.constructor === Object ? entity.___name : entity.constructor.name;
+            const entityName = entityCtor === Object ? entity.___name : entityCtor?.name;
             return this.getOrAddMetaData(entityName)
         }
 
         // if it is defined as function - execute the function
         metaData = typeof metaData === 'function' ? await metaData() : metaData
+
+        if (!(metaData instanceof PermissionsMetaData))
+            throw new Error(`permissionsMetaData for ${entityCtor?.name || entity.___name} must resolve to PermissionsMetaData`)
 
         // validate the metadata if it wasn't validated before
         if (!metaData._validated)
@@ -270,11 +275,7 @@ export class Role {
 
     readonly operations: Set<Operation>
 
-    constructor(pm: PrivilegeManager, readonly roleName: string, operations: string[], readonly entityType: (string | Function)) {
+    constructor(_pm: PrivilegeManager, readonly roleName: string, operations: Operation[], readonly entityType: (string | Function)) {
         this.operations = new Set<Operation>(operations);
-
-
     }
 }
-
-

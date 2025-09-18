@@ -5,15 +5,14 @@
     "esModuleInterop": true,
     "moduleResolution": "Node",
     "sourceMap": true,
-    "outDir": "dist"
+    "outDir": "dist",
+    "declaration": true,
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "lib": ["ES2020"]
   },
-  "lib": [
-    "ES2020"
-  ],
-  "declaration": true,
-  "emitDecoratorMetadata": true,
-  "experimentalDecorators": true,
   "exclude": [
-    "node_modules"
+    "node_modules",
+    "dist"
   ]
 }

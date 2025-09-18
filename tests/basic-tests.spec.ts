@@ -76,7 +76,7 @@ describe('Testing am-i-allowed ', () => {
     }
 
     // this would be our access control manager, set to work with the simplistic memory backend
-    const pm = new PrivilegeManager(new MemoryPermissionStore())
+const pm = new PrivilegeManager(new MemoryPermissionStore())
 
     // now, let's add a Seller role....
     const RoleSalesPerson = pm.addRole('Seller', ['ReadDeep', 'Sell'], Workshop)
@@ -115,8 +115,59 @@ describe('Testing am-i-allowed ', () => {
 
         // extracting roles
         expect(await pm.getRolesForActor(jeff, workShop1)).to.be.lengthOf(1)
-        console.log(await pm.getRolesForActor(jeff, workShop1))
 
+    })
+
+    it('supports async metadata factories and custom group resolvers', async () => {
+        class AsyncEntity implements IPrivilegeManaged {
+            constructor(public id: string) {}
+
+            static permissionsMetaData = async () => new PermissionsMetaData('AsyncEntity', {
+                defaultUserPermissions: ['ReadCommon']
+            })
+
+            permissionGroupIds = async () => ['async-group']
+        }
+
+        const entity = new AsyncEntity('async-1')
+        const actor: IActor = {id: '42', groups: () => Promise.resolve('async-group')}
+
+        expect(await pm.isAllowed(actor, 'ReadCommon', entity)).to.be.true
+        expect(await pm.isAllowed(actor, 'ReadDeep', entity)).to.be.false
+    })
+
+    it('throws when checking undefined operations', () => {
+        const actor: IActor = {id: '404'}
+        const entity: IPrivilegeManaged = {id: 'resource'}
+
+        expect(() => pm.isAllowed(actor, 'NonExistingOperation', entity)).to.throw('Operation NonExistingOperation is not defined')
+    })
+
+    it('expands operations up the taxonomy tree', () => {
+        const operations = pm.operationTree.expandOperation('ReadCommon')
+        expect(operations).to.include('ReadCommon')
+        expect(operations).to.include('ReadAnything')
+        expect(operations).to.include('Admin')
+    })
+
+    it('retrieves actor roles using string identifiers and pagination', async () => {
+        class Document implements IPrivilegeManaged {
+            constructor(public id: string) {}
+        }
+
+        const docA = new Document('docA')
+        const docB = new Document('docB')
+        const reviewerRole = pm.addRole('Reviewer', ['ReadCommon'], Document)
+
+        const reviewer: IActor = {id: '9000'}
+        await pm.assignRole(docA, reviewer, reviewerRole)
+        await pm.assignRole(docB, reviewer, reviewerRole)
+
+        const allRoles = await pm.getActorRoles('9000')
+        expect(Object.keys(allRoles)).to.have.lengthOf(2)
+
+        const limitedRoles = await pm.getActorRoles('9000', 1, 1)
+        expect(Object.keys(limitedRoles)).to.have.lengthOf(1)
     })
 })
 

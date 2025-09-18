@@ -19,6 +19,9 @@ would be in the source.
 ## Contributor Guide
 See [AGENTS.md](./AGENTS.md) for contributor workflow, coding standards, and testing expectations.
 
+## Persistence
+Review [PERSISTENCE.md](./PERSISTENCE.md) for guidance on implementing durable permission stores that conform to `IPermissionStore`.
+
 ## Features
 * Role-based
 * Permission groups
