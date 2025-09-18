@@ -108,6 +108,13 @@ you can use ids such as "System", and make sure to add `__name` member to it (ca
 1. You can define specific roles for specific group members over an entity type. Simply add a role that
 have the name `MemberOfMyGroup` where `MyGroup` is the name/id of the group.
 
+### Scenario Recipes
+- **Cascade with `permissionSuper`** – Point `permissionSuper` to a parent resource so children inherit fallback permissions when they lack local matches.
+- **Lock entities to members** – Set `groupMembershipMandatory: true` so users must share at least one group with the entity before default visitor/user rules apply.
+- **Inject business context** – Provide a `customPermissionChecker` that inspects the `specialContext` (feature flags, time of day, etc.) before delegating to `standardPermissionChecker`.
+- **Fail fast on typos** – When `PermissionsMetaData` references an operation not in the taxonomy, the manager throws and surfaces the invalid name for quick fixes.
+- **Extend the taxonomy** – Pass a transformer into the `PrivilegeManager` constructor to add custom branches (e.g., an `Audit` tree) without forking the default taxonomy.
+
 
 # Simple Example 
 ```ts
